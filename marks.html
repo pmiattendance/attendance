@@ -788,7 +788,7 @@ border-radius: 10px;
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
 import { getFirestore, collection, doc, getDoc, setDoc, getDocs, query, where, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
 
-// ✅ NEW FIREBASE CONFIG
+// ✅ FIREBASE CONFIG
 const firebaseConfig = {
   apiKey: "AIzaSyCsa_i-Wgrr2k5gBWlTUWc5kiESqtu-Otw",
   authDomain: "pmimarks.firebaseapp.com",
@@ -847,7 +847,6 @@ const Store = {
     }catch(e){console.error('Save marks error:',e);return{ok:false,err:e.message};}
   },
   
-  // ✅ FIXED: getStudentMarks - proper object syntax
   async getStudentMarks(school,grade,studentId,subject){
     try{
       const logId = `${Store.today()}_${subject.replace(/\s+/g,'_')}_${studentId}`;
@@ -855,17 +854,10 @@ const Store = {
       const snap = await getDoc(logRef);
       if(snap.exists()){
         const d = snap.data();
-        // ✅ FIXED: use 'data' key for nested object
-        return { 
-          ok: true, 
-          data: { 
-            obtained: d.obtainedMarks, 
-            total: d.totalMarks, 
-            isAbsent: d.isAbsent 
-          } 
-        };
+        // ✅ FIXED: proper object syntax with 'data' key
+        return { ok: true, data: { obtained: d.obtainedMarks, total: d.totalMarks, isAbsent: d.isAbsent } };
       }
-      // ✅ FIXED: use 'data' key for null value
+      // ✅ FIXED: proper object syntax with 'data' key
       return { ok: true, data: null };
     }catch(e){console.error('Get marks error:',e);return{ok:false,err:e.message};}
   },
@@ -940,14 +932,12 @@ const Store = {
     }catch(e){console.error('Get grade report error:',e);return{ok:false,err:e.message};}
   },
   
-  // ✅ UPDATED: Fetch ALL historical marks for each student
   async _getSingleGradeReport(school, grade, subjectFilter = null) {
     try {
       const students = await Store.getStudents(school, grade);
       const report = [];
       
       for (const student of students) {
-        // ✅ Fetch ALL marksLogs for this student (all dates, all subjects)
         const logsSnap = await getDocs(
           query(
             collection(db, 'schools', school, 'grades', grade, 'marksLogs'),
@@ -958,7 +948,6 @@ const Store = {
         const subjects = subjectFilter ? [subjectFilter] : (student.subjects || []);
         
         for (const subj of subjects) {
-          // Get all entries for this subject & sort by date (latest first)
           const subjectLogs = logsSnap.docs
             .map(d => d.data())
             .filter(log => log.subject === subj)
@@ -977,7 +966,7 @@ const Store = {
               total: latestEntry?.isAbsent ? null : latestEntry?.totalMarks,
               isAbsent: latestEntry?.isAbsent || false,
               date: latestEntry?.date || null,
-              allEntries: subjectLogs, // ✅ Full history for PDF
+              allEntries: subjectLogs,
               schoolName: school,
               gradeName: grade,
               totalLectures,
@@ -999,6 +988,7 @@ const State = {
   screen: 'dashboard',
   session: { school:null, grade:null, subject:null, date:null, students:[], idx:0, results:[] },
   studentList: { school:null, grade:null, selectedStudent:null },
+  // ✅ FIXED: proper object syntax with 'data' key
   reports: { school:null, grade:null, subject:null, data:[] },
   deletePending: null,
   libsReady: false,
@@ -1072,7 +1062,6 @@ function renderSubjectsCheckboxes(){const container=document.getElementById('sub
 function getSelectedSubjects(){return Array.from(document.querySelectorAll('#subjectsContainer input[type="checkbox"]:checked')).map(cb=>cb.value);}
 function renderSubjectDropdown(){const select=document.getElementById('selectMarksSubject');select.innerHTML='<option value="">Select a subject...</option>'+AVAILABLE_SUBJECTS.map(subj=>'<option value="'+subj+'">'+subj+'</option>').join('');}
 
-// ✅ RENDER MARKS LIST WITH TICKS
 async function renderMarksList(){
   const {school,grade,subject,students}=State.session;
   const list=document.getElementById('marksStudentList');
@@ -1109,12 +1098,10 @@ async function renderMarksList(){
     list.appendChild(item);
   }
   
-  // ✅ Enable Next button only if all students are completed
   const allCompleted=students.length>0&&students.every(s=>State.session.results.find(r=>r.studentId===s.id)?.completed);
   document.getElementById('btnMarksNext').disabled=!allCompleted;
 }
 
-// ✅ MARKS ENTRY POPUP
 function openMarksPopup(student,isEditing=false){
   const popup=document.getElementById('marksPopup');
   const {school,grade,subject,date}=State.session;
@@ -1127,13 +1114,11 @@ function openMarksPopup(student,isEditing=false){
   const absentToggle=document.getElementById('toggleAbsent');
   const marksFields=document.getElementById('marksInputFields');
   
-  // Reset state
   obtainedInput.value='';
   totalInput.value='';
   absentToggle.checked=false;
   marksFields.classList.remove('disabled');
   
-  // If editing, pre-fill values
   if(isEditing){
     const entry=State.session.results.find(r=>r.studentId===student.id);
     if(entry){
@@ -1145,7 +1130,6 @@ function openMarksPopup(student,isEditing=false){
     }
   }
   
-  // Toggle disabled state based on absent
   function toggleFields(){
     if(absentToggle.checked){
       marksFields.classList.add('disabled');
@@ -1158,7 +1142,6 @@ function openMarksPopup(student,isEditing=false){
   absentToggle.onchange=toggleFields;
   toggleFields();
   
-  // Handle Done
   document.getElementById('popupDone').onclick=async()=>{
     const isAbsent=absentToggle.checked;
     let obtained,total;
@@ -1172,13 +1155,11 @@ function openMarksPopup(student,isEditing=false){
       }
     }
     
-    // Save to Firebase
     showLoading(true);
     const result=await Store.saveMarksRecord(school,grade,subject,student,obtained,total,isAbsent,date);
     showLoading(false);
     
     if(result.ok){
-      // Update session results
       const idx=State.session.results.findIndex(r=>r.studentId===student.id);
       const entry={studentId:student.id,name:student.name,completed:true,isAbsent,obtained,total};
       if(idx>=0)State.session.results[idx]=entry;
@@ -1192,13 +1173,11 @@ function openMarksPopup(student,isEditing=false){
     }
   };
   
-  // Cancel
   document.getElementById('popupCancel').onclick=()=>{popup.classList.add('hidden');};
   
   popup.classList.remove('hidden');
 }
 
-// ✅ REVIEW CARDS (One at a time)
 function renderReviewCard(){
   const {results}=State.session;
   const current=results[State.session.idx];
@@ -1224,7 +1203,6 @@ function renderReviewCard(){
   const percent=results.length?Math.round((State.session.idx/results.length)*100):0;
   document.getElementById('reviewProgressFill').style.width=percent+'%';
   
-  // Enable Finish button only on last card
   document.getElementById('btnReviewFinish').disabled=State.session.idx<results.length-1;
 }
 
@@ -1244,7 +1222,7 @@ ${present.length?present.join('\n'):'• None'}
 ❌ Absent Students:
 ${absent.length?absent.join('\n'):'• None'}
 
-Generated by PMI Marks System`;
+`;
   
   document.getElementById('waPreview').textContent=msg;
   document.getElementById('waLink').href='https://api.whatsapp.com/send?text='+encodeURIComponent(msg);
@@ -1264,7 +1242,7 @@ function renderStudentDetail(student){const initials=student.name.split(' ').map
 document.getElementById('detailAvatar').textContent=initials;document.getElementById('detailName').textContent=student.name;document.getElementById('detailMeta').textContent=State.studentList.school+' • '+State.studentList.grade;
 const subjectsContainer=document.getElementById('detailSubjects');if(student.subjects&&student.subjects.length>0){subjectsContainer.innerHTML=student.subjects.map(subj=>'<span class="subject-tag">'+subj+'</span>').join('');}else{subjectsContainer.innerHTML='<span class="text-muted">No subjects enrolled</span>';}}
 
-// ✅ UPDATED PDF PREVIEW WITH ALL HISTORY
+// ✅ ENHANCED PDF PREVIEW WITH ALL HISTORY
 function renderPDFPreview(reportData, school, grade, subject){
   const preview = document.getElementById('pdfPreview');
   const content = document.getElementById('previewContent');
@@ -1274,7 +1252,6 @@ function renderPDFPreview(reportData, school, grade, subject){
   }
   preview.classList.remove('hidden');
   
-  // ✅ Group by Student
   const byStudent = {};
   reportData.forEach(row => {
     if(!byStudent[row.studentName]) byStudent[row.studentName] = [];
@@ -1328,12 +1305,12 @@ function renderReportTable(reportData,school,grade,subject){
   State.reports={school:school,grade:grade,subject:subject,data:reportData};
 }
 
-// ✅ UPDATED PDF GENERATOR WITH ALL HISTORY
+// ✅ PROFESSIONAL PDF GENERATOR - CLEANED VERSION
 async function generateMarksPDF(reportData, school, grade, subject){
   if(!window.jspdf || !window.jspdf.jsPDF) throw new Error('PDF library not loaded.');
   const {jsPDF} = window.jspdf;
   
-  // ✅ Group data by Student Name
+  // Group by Student Name
   const byStudent = {};
   reportData.forEach(row => {
     if(!byStudent[row.studentName]) byStudent[row.studentName] = [];
@@ -1346,67 +1323,97 @@ async function generateMarksPDF(reportData, school, grade, subject){
     const doc = new jsPDF();
     let y = 20;
     
-    // 🎨 Header
+    // 🎨 PROFESSIONAL HEADER
     doc.setFillColor(99, 102, 241);
-    doc.rect(0, 0, 210, 45, 'F');
+    doc.rect(0, 0, 210, 50, 'F');
+    
+    // Institute Logo/Name
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(20);
+    doc.setFontSize(22);
     doc.setFont('helvetica', 'bold');
     doc.text('Pravin More Institute', 105, 22, null, null, 'center');
     doc.setFontSize(14);
-    doc.text('Marks Report Card', 105, 32, null, null, 'center');
-    
-    // 📋 Student Info
-    doc.setTextColor(30, 41, 59);
-    doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
+    doc.text('Official Marks Report Card', 105, 32, null, null, 'center');
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Academic Excellence Through Assessment', 105, 42, null, null, 'center');
+    
+    // 📋 STUDENT INFO CARD
     doc.setFillColor(248, 250, 252);
-    doc.roundedRect(20, 52, 170, 28, 3, 3, 'F');
-    doc.text('Student: ' + studentName, 28, 64);
-    doc.text('School: ' + (school === '__ALL__' ? 'All Schools' : school), 28, 72);
-    doc.text('Grade: ' + (grade === '__ALL__' ? 'All Grades' : grade), 120, 64);
-    doc.text('Generated: ' + new Date().toLocaleDateString(), 120, 72);
+    doc.setDrawColor(226, 232, 240);
+    doc.roundedRect(15, 58, 180, 32, 4, 4, 'FD');
     
-    y = 95;
+    doc.setTextColor(30, 41, 59);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Student Information', 22, 70);
     
-    // 📚 Loop Through Subjects
-    subjects.forEach((subjData) => {
-      if(y > 240) { doc.addPage(); y = 20; }
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Name:', 22, 80);
+    doc.setFont('helvetica', 'bold');
+    doc.text(studentName, 45, 80);
+    
+    doc.setFont('helvetica', 'normal');
+    doc.text('School:', 22, 88);
+    doc.setFont('helvetica', 'bold');
+    doc.text(school === '__ALL__' ? 'Multiple Schools' : school, 45, 88);
+    
+    doc.setFont('helvetica', 'normal');
+    doc.text('Grade:', 120, 80);
+    doc.setFont('helvetica', 'bold');
+    doc.text(grade === '__ALL__' ? 'Multiple Grades' : grade, 145, 80);
+    
+    doc.setFont('helvetica', 'normal');
+    doc.text('Generated:', 120, 88);
+    doc.setFont('helvetica', 'bold');
+    doc.text(new Date().toLocaleDateString('en-IN'), 155, 88);
+    
+    y = 105;
+    
+    // 📚 SUBJECT-WISE REPORTS
+    subjects.forEach((subjData, subjIdx) => {
+      if(y > 245) { doc.addPage(); y = 20; }
       
-      // Subject Header
+      // Subject Header with Gradient
       doc.setFillColor(99, 102, 241);
-      doc.roundedRect(20, y-8, 170, 14, 2, 2, 'F');
+      doc.roundedRect(20, y-10, 170, 16, 3, 3, 'F');
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
-      doc.text('📘 ' + subjData.subject, 25, y);
+      doc.text(`📘 ${subjData.subject}`, 25, y);
       
+      // Attendance Stats
       const attendance = subjData.totalLectures > 0 
         ? Math.round((subjData.presentCount / subjData.totalLectures) * 100) 
         : 0;
       doc.setFontSize(9);
-      doc.text(`${subjData.presentCount}/${subjData.totalLectures} sessions • ${attendance}%`, 165, y, null, null, 'right');
+      doc.text(`${subjData.presentCount}/${subjData.totalLectures} sessions • ${attendance}% attendance`, 165, y, null, null, 'right');
       
-      y += 12;
+      y += 14;
       
       // Table Header
       doc.setFillColor(241, 245, 249);
-      doc.roundedRect(25, y-6, 160, 8, 1.5, 1.5, 'F');
+      doc.setDrawColor(226, 232, 240);
+      doc.roundedRect(25, y-7, 160, 10, 2, 2, 'FD');
       doc.setTextColor(30, 41, 59);
       doc.setFontSize(9);
       doc.setFont('helvetica', 'bold');
       doc.text('Date', 30, y);
-      doc.text('Marks', 95, y);
+      doc.text('Marks Obtained', 75, y);
+      doc.text('Total Marks', 115, y);
       doc.text('Status', 145, y);
-      doc.text('Score', 175, y, null, null, 'right');
+      doc.text('Score %', 175, y, null, null, 'right');
       
-      y += 6;
+      y += 8;
       
-      // ✅ Date-wise Entries (All History)
+      // Date-wise Entries Table
       subjData.allEntries.forEach((entry, eIdx) => {
         if(y > 270) {
           doc.addPage();
           y = 20;
+          // Header for continued page
           doc.setFillColor(99, 102, 241);
           doc.rect(0, 0, 210, 15, 'F');
           doc.setTextColor(255, 255, 255);
@@ -1416,9 +1423,10 @@ async function generateMarksPDF(reportData, school, grade, subject){
           y = 30;
         }
         
+        // Alternating row colors
         if(eIdx % 2 === 0) {
           doc.setFillColor(252, 253, 254);
-          doc.rect(25, y-5, 160, 7, 'F');
+          doc.rect(25, y-6, 160, 8, 'F');
         }
         
         doc.setFont('helvetica', 'normal');
@@ -1427,58 +1435,69 @@ async function generateMarksPDF(reportData, school, grade, subject){
         doc.setTextColor(30, 41, 59);
         doc.text(fmtDate, 30, y);
         
+        // Marks Display
         if(entry.isAbsent) {
           doc.setTextColor(239, 68, 68);
           doc.setFont('helvetica', 'bold');
-          doc.text('ABSENT', 95, y);
+          doc.text('—', 75, y);
+          doc.text('—', 115, y);
         } else {
           doc.setTextColor(16, 185, 129);
-          doc.text(`${entry.obtainedMarks} / ${entry.totalMarks}`, 95, y);
+          doc.text(`${entry.obtainedMarks}`, 75, y);
+          doc.text(`${entry.totalMarks}`, 115, y);
         }
         
+        // Status Badge
         doc.setFontSize(8);
         if(entry.isAbsent) {
           doc.setFillColor(254, 226, 226);
           doc.setTextColor(185, 28, 28);
-          doc.roundedRect(145, y-4, 25, 6, 1, 1, 'F');
+          doc.roundedRect(145, y-5, 25, 7, 1.5, 1.5, 'F');
           doc.text('Absent', 148, y);
         } else {
           doc.setFillColor(220, 252, 231);
           doc.setTextColor(6, 95, 70);
-          doc.roundedRect(145, y-4, 25, 6, 1, 1, 'F');
+          doc.roundedRect(145, y-5, 25, 7, 1.5, 1.5, 'F');
           doc.text('Present', 148, y);
         }
         
+        // Percentage Score with Progress Bar
         doc.setTextColor(99, 102, 241);
         doc.setFont('helvetica', 'bold');
         if(!entry.isAbsent && entry.totalMarks > 0) {
           const pct = Math.round((entry.obtainedMarks / entry.totalMarks) * 100);
           doc.text(pct + '%', 185, y, null, null, 'right');
+          
+          // Mini progress bar
           doc.setFillColor(221, 235, 255);
           doc.rect(165, y-3, 18, 3, 'F');
-          doc.setFillColor(99, 102, 241);
+          doc.setFillColor(pct >= 80 ? '#10b981' : pct >= 60 ? '#f59e0b' : '#ef4444');
           doc.rect(165, y-3, (pct * 0.18), 3, 'F');
         } else {
           doc.text('—', 185, y, null, null, 'right');
         }
         
         doc.setTextColor(30, 41, 59);
-        y += 9;
+        y += 10;
       });
-      y += 8;
+      y += 12;
     });
     
-    doc.setFontSize(8);
-    doc.setTextColor(150, 150, 150);
-    doc.text('Generated by PMI Marks System • ' + new Date().toLocaleString(), 105, 290, null, null, 'center');
+    // ✅ REMOVED: Report Summary footer section
     
-    pdfs.push({name: studentName.replace(/[^a-z0-9]/gi, '_').substring(0, 25), doc});
+    
+    // Sanitize filename - remove strange characters
+    const safeName = studentName
+      .replace(/[^a-z0-9]/gi, '_')
+      .replace(/[Ø=ÜØ]/g, '')  // ✅ Remove Ø=ÜØ characters
+      .substring(0, 30);
+    pdfs.push({name: safeName, doc});
   }
   
   return pdfs;
 }
 
-// ✅ UPDATED ZIP DOWNLOAD
+// ✅ ENHANCED ZIP DOWNLOAD WITH NESTED FOLDER STRUCTURE
 async function downloadReportZIP(){
   if(!State.reports.data || State.reports.data.length === 0){
     toast('No data to download', 'warning');
@@ -1490,25 +1509,53 @@ async function downloadReportZIP(){
   }
   
   showLoading(true);
-  toast('Preparing marksheet PDFs...', 'success');
+  toast('Preparing ZIP File', 'success');
   
   try{
     const zip = new JSZip();
     const {school, grade, subject, data} = State.reports;
     
-    // ✅ Generate enhanced PDFs (Returns array of student PDFs)
+    // Generate enhanced PDFs
     const studentPDFs = await generateMarksPDF(data, school, grade, subject);
     
-    // Add each student's PDF to ZIP
-    studentPDFs.forEach(({name, doc}) => {
-      zip.file(name + '.pdf', doc.output('arraybuffer'));
-    });
+    // 📁 Create nested folder structure: School/Grade/Student.pdf
+    for(const {name, doc} of studentPDFs){
+      // Determine folder path based on selection
+      let folderPath = '';
+      
+      if(school === '__ALL__' && grade === '__ALL__'){
+        // Find actual school/grade from data for this student
+        const studentData = data.find(d => d.studentName.replace(/[^a-z0-9]/gi, '_').substring(0,30) === name);
+        if(studentData){
+          const schoolFolder = studentData.schoolName.replace(/[^a-z0-9]/gi, '_').substring(0, 30);
+          const gradeFolder = studentData.gradeName.replace(/[^a-z0-9]/gi, '_').substring(0, 20);
+          folderPath = `${schoolFolder}/${gradeFolder}/`;
+        }
+      } else if(school === '__ALL__'){
+        const studentData = data.find(d => d.studentName.replace(/[^a-z0-9]/gi, '_').substring(0,30) === name);
+        if(studentData){
+          const schoolFolder = studentData.schoolName.replace(/[^a-z0-9]/gi, '_').substring(0, 30);
+          folderPath = `${schoolFolder}/${grade === '__ALL__' ? 'All_Grades' : grade.replace(/[^a-z0-9]/gi, '_')}/`;
+        }
+      } else if(grade === '__ALL__'){
+        folderPath = `${school.replace(/[^a-z0-9]/gi, '_').substring(0, 30)}/All_Grades/`;
+      } else {
+        folderPath = `${school.replace(/[^a-z0-9]/gi, '_').substring(0, 30)}/${grade.replace(/[^a-z0-9]/gi, '_').substring(0, 20)}/`;
+      }
+      
+      // Create nested folders and add PDF
+      zip.folder(folderPath).file(`${name}.pdf`, doc.output('arraybuffer'));
+    }
     
+
+    
+    // Generate and download ZIP
     const content = await zip.generateAsync({type: 'blob'});
-    const filename = 'PMI_Marks_Report_' + Store.today() + '.zip';
+    const timestamp = Store.today().replace(/-/g, '');
+    const filename = `PMI_Marks_Report_${school === '__ALL__' ? 'AllSchools' : school.replace(/[^a-z0-9]/gi, '_')}_${timestamp}.zip`;
     saveAs(content, filename);
     
-    toast('Downloaded ' + studentPDFs.length + ' student marksheets ✓', 'success');
+    toast(`Downloaded ${studentPDFs.length} student PDF's`, 'success');
   } catch(e){
     console.error('Export error:', e);
     toast('Export failed: ' + e.message, 'error');
@@ -1596,6 +1643,7 @@ document.getElementById('btnGenerateReport').onclick=async()=>{
   if(!school || school === ''){toast('Select a school','warning');return;}
   if(school !== '__ALL__' && (!grade || grade === '')){toast('Select a grade','warning');return;}
   showLoading(true);
+  // ✅ FIXED: proper object syntax with 'data' key
   State.reports={school:school,grade:grade,subject:subject,data:[]};
   const result=await Store.getGradeReport(school,grade,subject);
   showLoading(false);
@@ -1633,7 +1681,6 @@ async function startMarksWithSubject(){
     const allStudents=await Store.getStudents(school,grade),
           filteredStudents=allStudents.filter(s=>s.subjects&&Array.isArray(s.subjects)&&s.subjects.includes(subject));
     
-    // Initialize session results array
     State.session={school:school,grade:grade,subject:subject,date:date,students:filteredStudents,idx:0,results:filteredStudents.map(s=>({studentId:s.id,name:s.name,completed:false}))};
     
     if(!filteredStudents.length){toast('No students found for '+subject,'warning');makeWhatsAppReport();show('complete');return;}
@@ -1644,7 +1691,6 @@ async function startMarksWithSubject(){
   }catch(e){toast('Failed to load students','error');}finally{showLoading(false);}
 }
 
-// ✅ MARKS LIST CLICK HANDLER
 document.getElementById('marksStudentList').onclick=async(e)=>{
   const item=e.target.closest('.list-item[data-student-id]');
   if(item){
@@ -1652,7 +1698,6 @@ document.getElementById('marksStudentList').onclick=async(e)=>{
     const student=State.session.students.find(s=>s.id===studentId);
     if(student){
       const entry=State.session.results.find(r=>r.studentId===studentId);
-      // Open popup (editing if already completed)
       openMarksPopup(student, entry?.completed);
     }
   }
@@ -1660,21 +1705,17 @@ document.getElementById('marksStudentList').onclick=async(e)=>{
 
 document.getElementById('btnMarksBack').onclick=()=>{show('select-subject');};
 document.getElementById('btnMarksNext').onclick=()=>{
-  // Switch to review mode
   State.session.idx=0;
   renderReviewCard();
   show('review');
 };
 
-// ✅ REVIEW CARD HANDLERS
 document.getElementById('btnReviewEdit').onclick=()=>{
   const current=State.session.results[State.session.idx];
   const student=State.session.students.find(s=>s.id===current.studentId);
   if(student){
     openMarksPopup(student,true);
-    // After popup closes, re-render review card
     document.getElementById('popupDone').onclick=async()=>{
-      // Original done logic + re-render review
       const popup=document.getElementById('marksPopup');
       const {school,grade,subject,date}=State.session;
       const isAbsent=document.getElementById('toggleAbsent').checked;
@@ -1698,7 +1739,7 @@ document.getElementById('btnReviewEdit').onclick=()=>{
         toast('Marks updated ✓','success');
         popup.classList.add('hidden');
         renderMarksList();
-        renderReviewCard(); // ✅ Re-render review card after edit
+        renderReviewCard();
       }else{
         toast(result.err||'Save failed','error');
       }
@@ -1726,7 +1767,6 @@ document.getElementById('btnReviewBack').onclick=()=>{
 };
 
 document.getElementById('btnReviewFinish').onclick=async()=>{
-  // All marks already saved during entry, just finalize
   makeWhatsAppReport();
   show('complete');
 };
@@ -1762,7 +1802,6 @@ async function waitForLibraries(){
 (async()=>{
   await waitForLibraries();
   await renderSchoolSelects(true);
-  // Set default date to today
   document.getElementById('inputMarksDate').value = new Date().toISOString().split('T')[0];
   setTimeout(()=>toast('PMI Marks System Ready ✓'),500);
 })();
