@@ -606,28 +606,17 @@ border-radius: 10px;
     <button type="button" class="btn btn-primary" id="btnGenerateReport">🔍 Generate Report</button>
   </div>
   
-  <!-- PDF Preview -->
-  <div id="pdfPreview" class="pdf-preview hidden">
-    <h4>📄 PDF Preview</h4>
-    <div id="previewContent"></div>
-  </div>
   
   <div id="reportResults" class="mt-4 hidden">
-    <div class="student-detail-card">
-      <h4 class="font-semibold mb-2" id="reportTitle">Attendance Summary</h4>
-      <p class="text-sm text-muted mb-4" id="reportSubtitle"></p>
-      <div style="overflow-x: auto;">
-        <table class="summary-table">
-          <thead><tr><th>Student</th><th>Subject</th><th>Present / Total</th><th>Attendance %</th></tr></thead>
-          <tbody id="reportTableBody"></tbody>
-        </table>
-      </div>
-      <div class="form-actions mt-4">
-        <button type="button" class="btn btn-secondary" id="btnDownloadSingle" style="flex:1" disabled>📄 Download PDF</button>
-        <button type="button" class="btn btn-primary" id="btnDownloadZIP" style="flex:1" disabled>📦 Download ZIP</button>
-      </div>
-    </div>
+  <div class="student-detail-card" style="text-align:center;">
+    <h4 class="font-semibold mb-2">✅ Report Ready!</h4>
+    <p class="text-sm text-muted mb-4" id="reportSubtitle"></p>
+    <div class="form-actions" style="justify-content:center;flex-wrap:wrap;">
+  <button type="button" class="btn btn-primary" id="btnDownloadZIP" disabled style="min-width:200px;">📦 Download ZIP File</button>
+</div>
+    <p class="text-xs text-muted mt-3">Click to download attendance records</p>
   </div>
+</div>
   <div id="noReportData" class="list-empty hidden"><span class="list-empty-icon">📭</span><h4>No attendance data found</h4><p class="text-sm">Mark some attendance first to see reports</p></div>
 </section>
 
@@ -1015,61 +1004,28 @@ function renderStudentDetail(student){const initials=student.name.split(' ').map
 document.getElementById('detailAvatar').textContent=initials;document.getElementById('detailName').textContent=student.name;document.getElementById('detailMeta').textContent=State.studentList.school+' • '+State.studentList.grade;
 const subjectsContainer=document.getElementById('detailSubjects');if(student.subjects&&student.subjects.length>0){subjectsContainer.innerHTML=student.subjects.map(subj=>'<span class="subject-tag">'+subj+'</span>').join('');}else{subjectsContainer.innerHTML='<span class="text-muted">No subjects enrolled</span>';}}
 
-function renderPDFPreview(reportData, school, grade, subject){
-  const preview = document.getElementById('pdfPreview');
-  const content = document.getElementById('previewContent');
-  if(!reportData || reportData.length === 0){
-    preview.classList.add('hidden');
-    return;
-  }
-  preview.classList.remove('hidden');
-  const byStudent = {};
-  reportData.forEach(row => {
-    if(!byStudent[row.studentName]) byStudent[row.studentName] = [];
-    byStudent[row.studentName].push(row);
-  });
-  let html = `<div class="header"><strong>Pravin More Institute</strong><br><small>Attendance Report</small></div>`;
-  html += `<div class="row"><span class="label">School:</span><span class="value">${school === '__ALL__' ? 'All Schools' : school}</span></div>`;
-  html += `<div class="row"><span class="label">Grade:</span><span class="value">${grade === '__ALL__' ? 'All Grades' : grade}</span></div>`;
-  html += `<div class="row"><span class="label">Subject:</span><span class="value">${subject || 'All Subjects'}</span></div>`;
-  html += `<div class="row"><span class="label">Generated:</span><span class="value">${new Date().toLocaleDateString()}</span></div>`;
-  html += `<hr style="margin:12px 0;border:0;border-top:1px solid var(--border)">`;
-  Object.entries(byStudent).forEach(([name, rows]) => {
-    html += `<div style="margin:12px 0"><strong>${name}</strong></div>`;
-    rows.forEach(row => {
-      html += `<div class="row"><span>${row.subject}</span><span>${row.present}/${row.total} (${row.percent}%)</span></div><div class="bar"><div class="bar-fill" style="width:${row.percent}%"></div></div>`;
-    });
-  });
-  content.innerHTML = html;
-}
 
-// ✅ FIXED: renderReportTable with correct data key
 function renderReportTable(reportData,school,grade,subject){
-  const tbody=document.getElementById('reportTableBody');
-  tbody.innerHTML='';
   if(!reportData||reportData.length===0){
     document.getElementById('reportResults').classList.add('hidden');
     document.getElementById('noReportData').classList.remove('hidden');
-    document.getElementById('pdfPreview').classList.add('hidden');
     return;
   }
   document.getElementById('noReportData').classList.add('hidden');
   document.getElementById('reportResults').classList.remove('hidden');
+  
   const schoolLabel = school === '__ALL__' ? 'All Schools' : school;
   const gradeLabel = grade === '__ALL__' ? 'All Grades' : grade;
-  document.getElementById('reportTitle').textContent=subject?subject+' Attendance Report':'Attendance Summary Report';
-  document.getElementById('reportSubtitle').textContent=schoolLabel+' • '+gradeLabel+' • Generated: '+new Date().toLocaleDateString();
-  reportData.forEach(row=>{
-    const tr=document.createElement('tr');
-    tr.innerHTML='<td><strong>'+row.studentName+'</strong></td><td>'+row.subject+'</td><td class="summary-ratio">'+row.present+' / '+row.total+'</td><td><span class="summary-percent">'+row.percent+'%</span></td>';
-    tbody.appendChild(tr);
-  });
-  renderPDFPreview(reportData, school, grade, subject);
-  const pdfBtn = document.getElementById('btnDownloadSingle');
-  const zipBtn = document.getElementById('btnDownloadZIP');
-  pdfBtn.disabled = !window.jspdf?.jsPDF;
-  zipBtn.disabled = !window.JSZip;
-  State.reports={school:school,grade:grade,subject:subject,data:reportData};  // ✅ FIXED
+  const subjectLabel = subject || 'All Subjects';
+  document.getElementById('reportSubtitle').textContent=`${schoolLabel} • ${gradeLabel} • ${subjectLabel} • ${reportData.length} record(s)`;
+  
+  // Enable download buttons
+  // Enable ZIP download button
+const zipBtn = document.getElementById('btnDownloadZIP');
+zipBtn.disabled = !window.JSZip;
+  
+  // Store data for downloads
+  State.reports={school:school,grade:grade,subject:subject,data:reportData};
 }
 
 async function generateReportPDF(reportData,school,grade,subject){
@@ -1120,7 +1076,7 @@ async function generateReportPDF(reportData,school,grade,subject){
   });
   doc.setFontSize(7);
   doc.setTextColor(150,150,150);
-  doc.text('Generated by PMI Attendance System',105,290,null,null,'center');
+
   return doc.output('arraybuffer');
 }
 
@@ -1197,7 +1153,6 @@ async function downloadReportZIP(){
           
           doc.setFontSize(7);
           doc.setTextColor(150,150,150);
-          doc.text('Generated by PMI Attendance System',105,285,null,null,'center');
           
           const safeStudent=studentName.replace(/[^a-z0-9]/gi,'_').substring(0,25);
           gradeFolder.file(safeStudent+'.pdf',doc.output('arraybuffer'));
@@ -1235,7 +1190,15 @@ function showPasswordDialog(onConfirm){
 // Event Handlers
 document.getElementById('btnAdd').onclick=()=>{show('add-menu');};
 document.getElementById('btnStart').onclick=async()=>{await renderSchoolList();show('select-school');};
-document.getElementById('btnReports').onclick=async()=>{await renderSchoolSelects(true);State.reports={school:null,grade:null,subject:null,data:[]};document.getElementById('reportGrade').innerHTML='<option value="__ALL__">📚 All Grades</option><option value="">Select school first</option>';document.getElementById('reportGrade').disabled=true;document.getElementById('reportResults').classList.add('hidden');document.getElementById('noReportData').classList.add('hidden');document.getElementById('pdfPreview').classList.add('hidden');show('reports');};
+document.getElementById('btnReports').onclick=async()=>{
+  await renderSchoolSelects(true);
+  State.reports={school:null,grade:null,subject:null,data:[]};
+  document.getElementById('reportGrade').innerHTML='<option value="__ALL__">📚 All Grades</option><option value="">Select school first</option>';
+  document.getElementById('reportGrade').disabled=true;
+  document.getElementById('reportResults').classList.add('hidden');
+  document.getElementById('noReportData').classList.add('hidden');
+  show('reports');
+};
 
 document.getElementById('btnDeleteData').onclick = () => {
   showPasswordDialog(async (password) => {
@@ -1302,26 +1265,11 @@ document.getElementById('btnGenerateReport').onclick=async()=>{
   }else{
     document.getElementById('reportResults').classList.add('hidden');
     document.getElementById('noReportData').classList.remove('hidden');
-    document.getElementById('pdfPreview').classList.add('hidden');
     toast(result.err||'No attendance data found','warning');
-  }
+}
 };
 
-document.getElementById('btnDownloadSingle').onclick=async()=>{
-  if(!State.reports.data||State.reports.data.length===0){toast('No data to download','warning');return;}
-  if(!window.jspdf){toast('PDF library loading...','warning');return;}
-  showLoading(true);
-  try{
-    const{school,grade,subject,data}=State.reports,
-          pdfBuffer=await generateReportPDF(data,school,grade,subject),
-          filename='PMI_Attendance_Report_'+Store.today()+'.pdf',
-          blob=new Blob([pdfBuffer],{type:'application/pdf'}),
-          url=URL.createObjectURL(blob),
-          a=document.createElement('a');
-    a.href=url;a.download=filename;a.click();URL.revokeObjectURL(url);
-    toast('PDF downloaded','success');
-  }catch(e){console.error('PDF error:',e);toast('PDF failed: '+e.message,'error');}finally{showLoading(false);}
-};
+
 
 document.getElementById('btnDownloadZIP').onclick=downloadReportZIP;
 document.getElementById('schoolList').onclick=async(e)=>{const item=e.target.closest('.list-item[data-school]');if(item){if(e.target.closest('.btn-delete-school'))return;State.session.school=item.dataset.school;await renderGradeList(item.dataset.school);show('select-grade');}};
@@ -1375,8 +1323,9 @@ async function waitForLibraries(){
       if(window.JSZip && window.jspdf?.jsPDF){
         clearInterval(check);
         State.libsReady = true;
-        document.getElementById('btnDownloadSingle').disabled = false;
-        document.getElementById('btnDownloadZIP').disabled = false;
+        // Only enable ZIP button since PDF button was removed
+        const zipBtn = document.getElementById('btnDownloadZIP');
+        if(zipBtn) zipBtn.disabled = false;
         resolve();
       }
     }, 100);
