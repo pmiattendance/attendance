@@ -714,7 +714,10 @@ const Cache = {
 };
 
 const Store = {
-  today(){return new Date().toISOString().split('T')[0];},
+  today(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+},
   fmt(d){if(!d)return'';const[y,m,dd]=d.split('-');return`${dd}/${m}/${y}`;},
   async getSchools(){const c=Cache.get('schoolList',{});if(c)return c;try{const q=query(collection(db,'schools')),s=await getDocs(q),r=s.docs.map(d=>({id:d.id,...d.data()}));Cache.set('schoolList',{},r);return r;}catch(e){console.error('Get schools error:',e);return Cache.get('schoolList',{})||[];}},
   async addSchool(name){const n=name.trim();if(n.length<2)return{ok:false,err:'Name too short'};try{const ref=doc(db,'schools',n);if((await getDoc(ref)).exists())return{ok:false,err:'Already exists'};await setDoc(ref,{name:n,created:new Date().toISOString()});Cache.invalidate('schoolList',{});return{ok:true};}catch(e){console.error('Add school error:',e);return{ok:false,err:'Save failed: '+e.message};}},
