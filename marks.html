@@ -348,6 +348,139 @@ margin: 12px 0; display: flex; align-items: center; justify-content: center; gap
 .marks-popup .absent-toggle input { width: 18px; height: 18px; accent-color: var(--danger); }
 .marks-popup .absent-toggle label { font-size: 0.95rem; color: var(--danger); font-weight: 500; cursor: pointer; }
 .marks-popup .marks-inputs.disabled input { opacity: 0.5; pointer-events: none; background: #f1f5f9; }
+/* ===== REVIEW SCREEN STYLES ===== */
+.review-progress { margin-bottom: 20px; }
+.review-progress .progress-text { 
+  text-align: center; 
+  color: var(--text-secondary); 
+  font-size: 0.89rem; 
+  margin-bottom: 9px; 
+  font-weight: 500; 
+}
+.review-progress .progress-bar { 
+  height: 7px; 
+  background: var(--surface-alt); 
+  border-radius: 10px; 
+  overflow: hidden; 
+  border: 1px solid var(--border); 
+}
+.review-progress .progress-fill { 
+  height: 100%; 
+  background: var(--primary-gradient); 
+  border-radius: 10px; 
+  transition: width 0.3s ease; 
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3); 
+}
+
+.review-card {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 32px 26px;
+  text-align: center;
+  box-shadow: var(--shadow-lg);
+  margin: 14px 0 22px;
+  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+  animation: slideUp 0.28s ease-out;
+}
+.review-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--success-gradient);
+}
+
+.review-avatar {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: var(--success-gradient);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0 auto 18px;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+  border: 4px solid var(--surface);
+}
+
+.review-name {
+  font-size: 1.45rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.review-meta {
+  color: var(--text-secondary);
+  font-size: 0.96rem;
+  margin-bottom: 24px;
+}
+
+.review-marks {
+  font-size: 2.8rem;
+  font-weight: 800;
+  color: var(--primary);
+  margin: 12px 0 28px;
+  background: linear-gradient(135deg, var(--primary), #8b5cf6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.03em;
+}
+.review-marks.absent {
+  font-size: 1.8rem;
+  color: var(--danger);
+  background: none;
+  -webkit-text-fill-color: var(--danger);
+}
+
+.review-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 8px;
+}
+.review-actions .btn {
+  flex: 1;
+  max-width: 140px;
+  padding: 12px 16px;
+  font-size: 0.93rem;
+}
+.review-actions .btn-secondary {
+  background: var(--surface-alt);
+  border: 1.5px solid var(--border);
+}
+.review-actions .btn-secondary:hover {
+  background: #f1f5f9;
+  border-color: var(--border-focus);
+}
+.review-actions .btn-primary {
+  background: var(--primary-gradient);
+  color: white;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+}
+.review-actions .btn-primary:hover {
+  background: linear-gradient(135deg, var(--primary-hover), #7c3aed);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.45);
+}
+
+/* Responsive adjustments for review screen */
+@media (max-width: 480px) {
+  .review-card { padding: 28px 22px; }
+  .review-avatar { width: 78px; height: 78px; font-size: 1.7rem; }
+  .review-name { font-size: 1.3rem; }
+  .review-marks { font-size: 2.3rem; }
+  .review-actions .btn { max-width: 120px; padding: 11px 14px; font-size: 0.9rem; }
+}
 .student-detail-card {
 background: var(--surface); border-radius: var(--radius-lg); padding: 28px 24px;
 box-shadow: var(--shadow-lg); margin: 14px 0 22px; border: 1px solid var(--border);
@@ -444,79 +577,6 @@ border-radius: 10px;
 }
 .btn-delete-school:active, .btn-delete-student-quick:active { transform: scale(0.95); }
 @media (max-width: 480px) { .btn-delete-school, .btn-delete-student-quick { opacity: 1; } }
-
-/* PDF Preview Styles */
-.pdf-preview {
-  background: var(--surface-alt);
-  border-radius: var(--radius);
-  padding: 16px;
-  margin: 16px 0;
-  font-family: 'Courier New', monospace;
-  font-size: 0.8rem;
-  max-height: 200px;
-  overflow-y: auto;
-  border: 1px solid var(--border);
-}
-.pdf-preview h4 {
-  margin: 0 0 8px 0;
-  color: var(--primary);
-  font-weight: 600;
-}
-.pdf-preview .header {
-  text-align: center;
-  border-bottom: 2px solid var(--border);
-  padding-bottom: 8px;
-  margin-bottom: 12px;
-}
-.pdf-preview .row {
-  display: flex;
-  justify-content: space-between;
-  padding: 4px 0;
-  border-bottom: 1px dashed var(--border);
-}
-.pdf-preview .row:last-child { border-bottom: none; }
-.pdf-preview .label { font-weight: 500; color: var(--text-primary); }
-.pdf-preview .value { color: var(--text-secondary); }
-.pdf-preview .bar {
-  height: 6px;
-  background: var(--surface);
-  border-radius: 3px;
-  margin-top: 4px;
-  overflow: hidden;
-}
-.pdf-preview .bar-fill {
-  height: 100%;
-  background: var(--primary-gradient);
-  border-radius: 3px;
-  transition: width 0.3s ease;
-}
-
-/* Review Card Styles */
-.review-card {
-  background: var(--surface); border-radius: var(--radius-lg); padding: 28px 24px;
-  text-align: center; box-shadow: var(--shadow-lg); margin: 14px 0 22px;
-  border: 1px solid var(--border); position: relative;
-}
-.review-card::before {
-  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
-  background: var(--primary-gradient);
-}
-.review-avatar {
-  width: 72px; height: 72px; border-radius: 50%; background: var(--primary-gradient);
-  color: white; display: flex; align-items: center; justify-content: center;
-  font-size: 1.6rem; font-weight: 700; margin: 0 auto 14px;
-  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4); border: 4px solid var(--surface);
-}
-.review-name { font-size: 1.25rem; font-weight: 700; margin-bottom: 4px; color: var(--text-primary); }
-.review-meta { color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 18px; }
-.review-marks {
-  font-size: 1.8rem; font-weight: 800; color: var(--primary);
-  margin: 12px 0; letter-spacing: -0.03em;
-}
-.review-marks.absent { color: var(--danger); font-size: 1.4rem; }
-.review-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 20px; }
-.review-progress { margin: 12px 0 18px; }
-.review-progress .progress-text { font-size: 0.85rem; }
 </style>
 </head>
 <body>
@@ -611,7 +671,7 @@ border-radius: 10px;
 </div>
 </section>
 
-<!-- REPORTS SCREEN -->
+<!-- REPORTS SCREEN - SIMPLIFIED (NO PREVIEW TABLE) -->
 <section id="screen-reports" class="screen">
   <p class="text-muted mb-4 font-medium">Generate Marks Reports</p>
   <div class="form">
@@ -646,25 +706,13 @@ border-radius: 10px;
     <button type="button" class="btn btn-primary" id="btnGenerateReport">🔍 Generate Report</button>
   </div>
   
-  <!-- PDF Preview -->
-  <div id="pdfPreview" class="pdf-preview hidden">
-    <h4>📄 PDF Preview</h4>
-    <div id="previewContent"></div>
-  </div>
-  
+  <!-- ✅ ONLY DOWNLOAD BUTTON - NO PREVIEW TABLE -->
   <div id="reportResults" class="mt-4 hidden">
-    <div class="student-detail-card">
-      <h4 class="font-semibold mb-2" id="reportTitle">Marks Summary</h4>
+    <div class="student-detail-card" style="text-align:center;">
+      <h4 class="font-semibold mb-2">✅ Report Ready!</h4>
       <p class="text-sm text-muted mb-4" id="reportSubtitle"></p>
-      <div style="overflow-x: auto;">
-        <table class="summary-table">
-          <thead><tr><th>Student</th><th>Subject</th><th>Marks</th><th>Date</th></tr></thead>
-          <tbody id="reportTableBody"></tbody>
-        </table>
-      </div>
-      <div class="form-actions mt-4">
-        <button type="button" class="btn btn-primary" id="btnDownloadZIP" style="flex:1">📦 Download ZIP</button>
-      </div>
+      <button type="button" class="btn btn-primary" id="btnDownloadZIP" style="width:100%;max-width:280px;margin:0 auto;">📦 Download ZIP File</button>
+      <p class="text-xs text-muted mt-3">ZIP contains: School/Grade/Student/Subject.pdf</p>
     </div>
   </div>
   <div id="noReportData" class="list-empty hidden"><span class="list-empty-icon">📭</span><h4>No marks data found</h4><p class="text-sm">Feed some marks first to see reports</p></div>
@@ -828,7 +876,6 @@ const Store = {
   async addStudent(schoolName,gradeName,name,subjects){const n=name.trim();if(n.length<2)return{ok:false,err:'Name too short'};if(!subjects||subjects.length===0)return{ok:false,err:'Select at least one subject'};try{const sRef=collection(db,'schools',schoolName,'grades',gradeName,'students'),q=query(sRef,where('name','==',n)),snap=await getDocs(q);if(!snap.empty)return{ok:false,err:'Already enrolled'};const newRef=doc(sRef);await setDoc(newRef,{name:n,subjects:subjects,added:new Date().toISOString()});Cache.invalidate('students',{school:schoolName,grade:gradeName});Cache.invalidate('gradeList',{school:schoolName});Cache.invalidate('schoolList',{});return{ok:true,id:newRef.id};}catch(e){console.error('Add student error:',e);return{ok:false,err:'Save failed: '+e.message};}},
   async deleteStudent(schoolName,gradeName,studentId){try{await deleteDoc(doc(db,'schools',schoolName,'grades',gradeName,'students',studentId));Cache.invalidate('students',{school:schoolName,grade:gradeName});Cache.invalidate('gradeList',{school:schoolName});Cache.invalidate('schoolList',{});return{ok:true};}catch(e){console.error('Delete student error:',e);return{ok:false,err:e.message};}},
   
-  // ✅ SAVE MARKS RECORD
   async saveMarksRecord(school,grade,subject,student,obtained,total,isAbsent,date){
     try{
       const logId = `${date}_${subject.replace(/\s+/g,'_')}_${student.id}`;
@@ -854,10 +901,8 @@ const Store = {
       const snap = await getDoc(logRef);
       if(snap.exists()){
         const d = snap.data();
-        // ✅ FIXED: proper object syntax with 'data' key
         return { ok: true, data: { obtained: d.obtainedMarks, total: d.totalMarks, isAbsent: d.isAbsent } };
       }
-      // ✅ FIXED: proper object syntax with 'data' key
       return { ok: true, data: null };
     }catch(e){console.error('Get marks error:',e);return{ok:false,err:e.message};}
   },
@@ -988,7 +1033,6 @@ const State = {
   screen: 'dashboard',
   session: { school:null, grade:null, subject:null, date:null, students:[], idx:0, results:[] },
   studentList: { school:null, grade:null, selectedStudent:null },
-  // ✅ FIXED: proper object syntax with 'data' key
   reports: { school:null, grade:null, subject:null, data:[] },
   deletePending: null,
   libsReady: false,
@@ -1242,165 +1286,99 @@ function renderStudentDetail(student){const initials=student.name.split(' ').map
 document.getElementById('detailAvatar').textContent=initials;document.getElementById('detailName').textContent=student.name;document.getElementById('detailMeta').textContent=State.studentList.school+' • '+State.studentList.grade;
 const subjectsContainer=document.getElementById('detailSubjects');if(student.subjects&&student.subjects.length>0){subjectsContainer.innerHTML=student.subjects.map(subj=>'<span class="subject-tag">'+subj+'</span>').join('');}else{subjectsContainer.innerHTML='<span class="text-muted">No subjects enrolled</span>';}}
 
-// ✅ ENHANCED PDF PREVIEW WITH ALL HISTORY
-function renderPDFPreview(reportData, school, grade, subject){
-  const preview = document.getElementById('pdfPreview');
-  const content = document.getElementById('previewContent');
-  if(!reportData || reportData.length === 0){
-    preview.classList.add('hidden');
-    return;
-  }
-  preview.classList.remove('hidden');
-  
-  const byStudent = {};
-  reportData.forEach(row => {
-    if(!byStudent[row.studentName]) byStudent[row.studentName] = [];
-    byStudent[row.studentName].push(row);
-  });
-  
-  let html = `<div class="header"><strong>📋 PMI Marks Report</strong><br><small>Complete History</small></div>`;
-  html += `<div class="row"><span class="label">School:</span><span class="value">${school === '__ALL__' ? 'All Schools' : school}</span></div>`;
-  html += `<div class="row"><span class="label">Grade:</span><span class="value">${grade === '__ALL__' ? 'All Grades' : grade}</span></div>`;
-  html += `<div class="row"><span class="label">Generated:</span><span class="value">${new Date().toLocaleDateString()}</span></div>`;
-  html += `<hr style="margin:12px 0;border:0;border-top:1px solid var(--border)">`;
-  
-  Object.entries(byStudent).forEach(([name, subjects]) => {
-    html += `<div style="margin:16px 0 8px; font-weight:700; color:var(--primary)">👤 ${name}</div>`;
-    subjects.forEach(subj => {
-      html += `<div style="margin:8px 0 4px; font-weight:600; font-size:0.85rem">📘 ${subj.subject}</div>`;
-      subj.allEntries.forEach(entry => {
-        const marks = entry.isAbsent ? '<span style="color:var(--danger)">ABSENT</span>' : `${entry.obtained}/${entry.total}`;
-        const date = entry.date ? Store.fmt(entry.date) : '—';
-        html += `<div class="row"><span>${date}</span><span>${marks}</span></div>`;
-      });
-    });
-  });
-  content.innerHTML = html;
-}
-
 function renderReportTable(reportData,school,grade,subject){
-  const tbody=document.getElementById('reportTableBody');
-  tbody.innerHTML='';
+  // ✅ REMOVED: No table rendering anymore - just show download button
   if(!reportData||reportData.length===0){
     document.getElementById('reportResults').classList.add('hidden');
     document.getElementById('noReportData').classList.remove('hidden');
-    document.getElementById('pdfPreview').classList.add('hidden');
     return;
   }
   document.getElementById('noReportData').classList.add('hidden');
   document.getElementById('reportResults').classList.remove('hidden');
   const schoolLabel = school === '__ALL__' ? 'All Schools' : school;
   const gradeLabel = grade === '__ALL__' ? 'All Grades' : grade;
-  document.getElementById('reportTitle').textContent=subject?subject+' Marks Report':'Marks Summary Report';
-  document.getElementById('reportSubtitle').textContent=schoolLabel+' • '+gradeLabel+' • Generated: '+new Date().toLocaleDateString();
-  reportData.forEach(row=>{
-    const tr=document.createElement('tr');
-    const marks=row.isAbsent?'<span style="color:var(--danger);font-weight:600">ABSENT</span>':`${row.obtained}/${row.total}`;
-    tr.innerHTML='<td><strong>'+row.studentName+'</strong></td><td>'+row.subject+'</td><td class="summary-ratio">'+marks+'</td><td class="text-sm">'+(row.date||'—')+'</td>';
-    tbody.appendChild(tr);
-  });
-  renderPDFPreview(reportData, school, grade, subject);
-  const zipBtn = document.getElementById('btnDownloadZIP');
-  zipBtn.disabled = !window.JSZip;
+  document.getElementById('reportSubtitle').textContent=`${schoolLabel} • ${gradeLabel}${subject ? ' • '+subject : ''} • ${reportData.length} record(s)`;
   State.reports={school:school,grade:grade,subject:subject,data:reportData};
 }
 
-// ✅ PROFESSIONAL PDF GENERATOR - CLEANED VERSION
-async function generateMarksPDF(reportData, school, grade, subject){
+// ✅ FIXED: Generate individual subject PDFs with CORRECT field names
+async function generateSubjectPDFs(reportData, school, grade){
   if(!window.jspdf || !window.jspdf.jsPDF) throw new Error('PDF library not loaded.');
   const {jsPDF} = window.jspdf;
   
-  // Group by Student Name
+  // Group by Student → Subject
   const byStudent = {};
   reportData.forEach(row => {
-    if(!byStudent[row.studentName]) byStudent[row.studentName] = [];
-    byStudent[row.studentName].push(row);
+    if(!byStudent[row.studentName]) byStudent[row.studentName] = {};
+    if(!byStudent[row.studentName][row.subject]) byStudent[row.studentName][row.subject] = [];
+    byStudent[row.studentName][row.subject].push(row);
   });
   
   const pdfs = [];
   
   for(const [studentName, subjects] of Object.entries(byStudent)){
-    const doc = new jsPDF();
-    let y = 20;
-    
-    // 🎨 PROFESSIONAL HEADER
-    doc.setFillColor(99, 102, 241);
-    doc.rect(0, 0, 210, 50, 'F');
-    
-    // Institute Logo/Name
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(22);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Pravin More Institute', 105, 22, null, null, 'center');
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Official Marks Report Card', 105, 32, null, null, 'center');
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Academic Excellence Through Assessment', 105, 42, null, null, 'center');
-    
-    // 📋 STUDENT INFO CARD
-    doc.setFillColor(248, 250, 252);
-    doc.setDrawColor(226, 232, 240);
-    doc.roundedRect(15, 58, 180, 32, 4, 4, 'FD');
-    
-    doc.setTextColor(30, 41, 59);
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Student Information', 22, 70);
-    
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Name:', 22, 80);
-    doc.setFont('helvetica', 'bold');
-    doc.text(studentName, 45, 80);
-    
-    doc.setFont('helvetica', 'normal');
-    doc.text('School:', 22, 88);
-    doc.setFont('helvetica', 'bold');
-    doc.text(school === '__ALL__' ? 'Multiple Schools' : school, 45, 88);
-    
-    doc.setFont('helvetica', 'normal');
-    doc.text('Grade:', 120, 80);
-    doc.setFont('helvetica', 'bold');
-    doc.text(grade === '__ALL__' ? 'Multiple Grades' : grade, 145, 80);
-    
-    doc.setFont('helvetica', 'normal');
-    doc.text('Generated:', 120, 88);
-    doc.setFont('helvetica', 'bold');
-    doc.text(new Date().toLocaleDateString('en-IN'), 155, 88);
-    
-    y = 105;
-    
-    // 📚 SUBJECT-WISE REPORTS
-    subjects.forEach((subjData, subjIdx) => {
-      if(y > 245) { doc.addPage(); y = 20; }
+    for(const [subjectName, reportItems] of Object.entries(subjects)){
+      // Get the report item (should be one per student-subject)
+      const reportItem = reportItems[0];
+      const allEntries = reportItem.allEntries || [];
       
-      // Subject Header with Gradient
+      const doc = new jsPDF();
+      let y = 25;
+      
+      // 🎨 HEADER
       doc.setFillColor(99, 102, 241);
-      doc.roundedRect(20, y-10, 170, 16, 3, 3, 'F');
+      doc.rect(0, 0, 210, 45, 'F');
+      
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(11);
+      doc.setFontSize(18);
       doc.setFont('helvetica', 'bold');
-      doc.text(`📘 ${subjData.subject}`, 25, y);
+      doc.text('Pravin More Institute', 105, 20, null, null, 'center');
+      doc.setFontSize(13);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Subject Assessment Report', 105, 32, null, null, 'center');
       
-      // Attendance Stats
-      const attendance = subjData.totalLectures > 0 
-        ? Math.round((subjData.presentCount / subjData.totalLectures) * 100) 
-        : 0;
+      // 📋 STUDENT & SUBJECT INFO
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(226, 232, 240);
+      doc.roundedRect(15, 52, 180, 28, 4, 4, 'FD');
+      
+      doc.setTextColor(30, 41, 59);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Student:', 22, 64);
+      doc.setFont('helvetica', 'normal');
+      doc.text(studentName, 45, 64);
+      
+      doc.setFont('helvetica', 'bold');
+      doc.text('Subject:', 22, 72);
+      doc.setFont('helvetica', 'normal');
+      doc.text(subjectName, 45, 72);
+      
+      doc.setFont('helvetica', 'bold');
+      doc.text('School:', 110, 64);
+      doc.setFont('helvetica', 'normal');
+      doc.text(school === '__ALL__' ? 'Multiple' : school, 135, 64);
+      
+      doc.setFont('helvetica', 'bold');
+      doc.text('Grade:', 110, 72);
+      doc.setFont('helvetica', 'normal');
+      doc.text(grade === '__ALL__' ? 'Multiple' : grade, 135, 72);
+      
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100, 116, 139);
       doc.setFontSize(9);
-      doc.text(`${subjData.presentCount}/${subjData.totalLectures} sessions • ${attendance}% attendance`, 165, y, null, null, 'right');
+      doc.text('Generated: ' + new Date().toLocaleDateString('en-IN'), 105, 78, null, null, 'center');
       
-      y += 14;
+      y = 95;
       
-      // Table Header
+      // 📅 ENTRIES TABLE HEADER
       doc.setFillColor(241, 245, 249);
       doc.setDrawColor(226, 232, 240);
-      doc.roundedRect(25, y-7, 160, 10, 2, 2, 'FD');
+      doc.roundedRect(20, y-8, 170, 10, 2, 2, 'FD');
       doc.setTextColor(30, 41, 59);
       doc.setFontSize(9);
       doc.setFont('helvetica', 'bold');
-      doc.text('Date', 30, y);
+      doc.text('Test Date', 28, y);
       doc.text('Marks Obtained', 75, y);
       doc.text('Total Marks', 115, y);
       doc.text('Status', 145, y);
@@ -1408,48 +1386,37 @@ async function generateMarksPDF(reportData, school, grade, subject){
       
       y += 8;
       
-      // Date-wise Entries Table
-      subjData.allEntries.forEach((entry, eIdx) => {
-        if(y > 270) {
-          doc.addPage();
-          y = 20;
-          // Header for continued page
-          doc.setFillColor(99, 102, 241);
-          doc.rect(0, 0, 210, 15, 'F');
-          doc.setTextColor(255, 255, 255);
-          doc.setFontSize(10);
-          doc.setFont('helvetica', 'bold');
-          doc.text('Pravin More Institute - Continued', 105, 10, null, null, 'center');
-          y = 30;
-        }
+      // 📋 DATE-WISE ENTRIES - ✅ FIXED: Use correct field names from allEntries
+      allEntries.forEach((log, idx) => {
+        if(y > 270) { doc.addPage(); y = 20; }
         
         // Alternating row colors
-        if(eIdx % 2 === 0) {
+        if(idx % 2 === 0) {
           doc.setFillColor(252, 253, 254);
-          doc.rect(25, y-6, 160, 8, 'F');
+          doc.rect(20, y-6, 170, 8, 'F');
         }
         
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(9);
-        const fmtDate = entry.date ? Store.fmt(entry.date) : '—';
+        const fmtDate = log.date ? Store.fmt(log.date) : '—';
         doc.setTextColor(30, 41, 59);
-        doc.text(fmtDate, 30, y);
+        doc.text(fmtDate, 28, y);
         
-        // Marks Display
-        if(entry.isAbsent) {
+        // ✅ FIXED: Use log.obtainedMarks and log.totalMarks (not entry.obtainedMarks)
+        if(log.isAbsent) {
           doc.setTextColor(239, 68, 68);
           doc.setFont('helvetica', 'bold');
           doc.text('—', 75, y);
           doc.text('—', 115, y);
         } else {
           doc.setTextColor(16, 185, 129);
-          doc.text(`${entry.obtainedMarks}`, 75, y);
-          doc.text(`${entry.totalMarks}`, 115, y);
+          doc.text(`${log.obtainedMarks ?? '—'}`, 75, y);
+          doc.text(`${log.totalMarks ?? '—'}`, 115, y);
         }
         
         // Status Badge
         doc.setFontSize(8);
-        if(entry.isAbsent) {
+        if(log.isAbsent) {
           doc.setFillColor(254, 226, 226);
           doc.setTextColor(185, 28, 28);
           doc.roundedRect(145, y-5, 25, 7, 1.5, 1.5, 'F');
@@ -1461,18 +1428,12 @@ async function generateMarksPDF(reportData, school, grade, subject){
           doc.text('Present', 148, y);
         }
         
-        // Percentage Score with Progress Bar
+        // Percentage Score
         doc.setTextColor(99, 102, 241);
         doc.setFont('helvetica', 'bold');
-        if(!entry.isAbsent && entry.totalMarks > 0) {
-          const pct = Math.round((entry.obtainedMarks / entry.totalMarks) * 100);
+        if(!log.isAbsent && log.totalMarks && log.totalMarks > 0 && log.obtainedMarks !== null) {
+          const pct = Math.round((log.obtainedMarks / log.totalMarks) * 100);
           doc.text(pct + '%', 185, y, null, null, 'right');
-          
-          // Mini progress bar
-          doc.setFillColor(221, 235, 255);
-          doc.rect(165, y-3, 18, 3, 'F');
-          doc.setFillColor(pct >= 80 ? '#10b981' : pct >= 60 ? '#f59e0b' : '#ef4444');
-          doc.rect(165, y-3, (pct * 0.18), 3, 'F');
         } else {
           doc.text('—', 185, y, null, null, 'right');
         }
@@ -1480,24 +1441,28 @@ async function generateMarksPDF(reportData, school, grade, subject){
         doc.setTextColor(30, 41, 59);
         y += 10;
       });
-      y += 12;
-    });
-    
-    // ✅ REMOVED: Report Summary footer section
-    
-    
-    // Sanitize filename - remove strange characters
-    const safeName = studentName
-      .replace(/[^a-z0-9]/gi, '_')
-      .replace(/[Ø=ÜØ]/g, '')  // ✅ Remove Ø=ÜØ characters
-      .substring(0, 30);
-    pdfs.push({name: safeName, doc});
+      
+      // Footer
+      doc.setFontSize(8);
+      doc.setTextColor(100, 116, 139);
+      doc.text('© Pravin More Institute - Confidential', 105, 290, null, null, 'center');
+      
+      // Sanitize filename
+      const safeStudent = studentName.replace(/[^a-z0-9]/gi, '_').substring(0, 30);
+      const safeSubject = subjectName.replace(/[^a-z0-9]/gi, '_').substring(0, 20);
+      
+      pdfs.push({
+        studentName: safeStudent,
+        subjectName: safeSubject,
+        doc: doc
+      });
+    }
   }
   
   return pdfs;
 }
 
-// ✅ ENHANCED ZIP DOWNLOAD WITH NESTED FOLDER STRUCTURE
+// ✅ ZIP DOWNLOAD WITH NESTED FOLDER STRUCTURE
 async function downloadReportZIP(){
   if(!State.reports.data || State.reports.data.length === 0){
     toast('No data to download', 'warning');
@@ -1515,39 +1480,41 @@ async function downloadReportZIP(){
     const zip = new JSZip();
     const {school, grade, subject, data} = State.reports;
     
-    // Generate enhanced PDFs
-    const studentPDFs = await generateMarksPDF(data, school, grade, subject);
+    // Generate subject-wise PDFs for each student
+    const subjectPDFs = await generateSubjectPDFs(data, school, grade);
     
-    // 📁 Create nested folder structure: School/Grade/Student.pdf
-    for(const {name, doc} of studentPDFs){
-      // Determine folder path based on selection
+    // 📁 Create nested folder structure: School/Grade/StudentName/Subject.pdf
+    for(const {studentName, subjectName, doc} of subjectPDFs){
       let folderPath = '';
       
       if(school === '__ALL__' && grade === '__ALL__'){
-        // Find actual school/grade from data for this student
-        const studentData = data.find(d => d.studentName.replace(/[^a-z0-9]/gi, '_').substring(0,30) === name);
+        const studentData = data.find(d => 
+          d.studentName.replace(/[^a-z0-9]/gi, '_').substring(0,30) === studentName &&
+          d.subject.replace(/[^a-z0-9]/gi, '_').substring(0,20) === subjectName
+        );
         if(studentData){
           const schoolFolder = studentData.schoolName.replace(/[^a-z0-9]/gi, '_').substring(0, 30);
           const gradeFolder = studentData.gradeName.replace(/[^a-z0-9]/gi, '_').substring(0, 20);
-          folderPath = `${schoolFolder}/${gradeFolder}/`;
+          folderPath = `${schoolFolder}/${gradeFolder}/${studentName}/`;
         }
       } else if(school === '__ALL__'){
-        const studentData = data.find(d => d.studentName.replace(/[^a-z0-9]/gi, '_').substring(0,30) === name);
+        const studentData = data.find(d => 
+          d.studentName.replace(/[^a-z0-9]/gi, '_').substring(0,30) === studentName &&
+          d.subject.replace(/[^a-z0-9]/gi, '_').substring(0,20) === subjectName
+        );
         if(studentData){
           const schoolFolder = studentData.schoolName.replace(/[^a-z0-9]/gi, '_').substring(0, 30);
-          folderPath = `${schoolFolder}/${grade === '__ALL__' ? 'All_Grades' : grade.replace(/[^a-z0-9]/gi, '_')}/`;
+          folderPath = `${schoolFolder}/${grade === '__ALL__' ? 'All_Grades' : grade.replace(/[^a-z0-9]/gi, '_')}/${studentName}/`;
         }
       } else if(grade === '__ALL__'){
-        folderPath = `${school.replace(/[^a-z0-9]/gi, '_').substring(0, 30)}/All_Grades/`;
+        folderPath = `${school.replace(/[^a-z0-9]/gi, '_').substring(0, 30)}/All_Grades/${studentName}/`;
       } else {
-        folderPath = `${school.replace(/[^a-z0-9]/gi, '_').substring(0, 30)}/${grade.replace(/[^a-z0-9]/gi, '_').substring(0, 20)}/`;
+        folderPath = `${school.replace(/[^a-z0-9]/gi, '_').substring(0, 30)}/${grade.replace(/[^a-z0-9]/gi, '_').substring(0, 20)}/${studentName}/`;
       }
       
       // Create nested folders and add PDF
-      zip.folder(folderPath).file(`${name}.pdf`, doc.output('arraybuffer'));
+      zip.folder(folderPath).file(`${subjectName}.pdf`, doc.output('arraybuffer'));
     }
-    
-
     
     // Generate and download ZIP
     const content = await zip.generateAsync({type: 'blob'});
@@ -1555,7 +1522,7 @@ async function downloadReportZIP(){
     const filename = `PMI_Marks_Report_${school === '__ALL__' ? 'AllSchools' : school.replace(/[^a-z0-9]/gi, '_')}_${timestamp}.zip`;
     saveAs(content, filename);
     
-    toast(`Downloaded ${studentPDFs.length} student PDF's`, 'success');
+    toast(`Downloaded ${subjectPDFs.length} subject PDF's`, 'success');
   } catch(e){
     console.error('Export error:', e);
     toast('Export failed: ' + e.message, 'error');
@@ -1586,7 +1553,7 @@ function showPasswordDialog(onConfirm){
 // Event Handlers
 document.getElementById('btnAdd').onclick=()=>{show('add-menu');};
 document.getElementById('btnStart').onclick=async()=>{await renderSchoolList();show('select-school');};
-document.getElementById('btnReports').onclick=async()=>{await renderSchoolSelects(true);State.reports={school:null,grade:null,subject:null,data:[]};document.getElementById('reportGrade').innerHTML='<option value="__ALL__">📚 All Grades</option><option value="">Select school first</option>';document.getElementById('reportGrade').disabled=true;document.getElementById('reportResults').classList.add('hidden');document.getElementById('noReportData').classList.add('hidden');document.getElementById('pdfPreview').classList.add('hidden');show('reports');};
+document.getElementById('btnReports').onclick=async()=>{await renderSchoolSelects(true);State.reports={school:null,grade:null,subject:null,data:[]};document.getElementById('reportGrade').innerHTML='<option value="__ALL__">📚 All Grades</option><option value="">Select school first</option>';document.getElementById('reportGrade').disabled=true;document.getElementById('reportResults').classList.add('hidden');document.getElementById('noReportData').classList.add('hidden');show('reports');};
 
 document.getElementById('btnDeleteData').onclick = () => {
   showPasswordDialog(async (password) => {
@@ -1643,7 +1610,6 @@ document.getElementById('btnGenerateReport').onclick=async()=>{
   if(!school || school === ''){toast('Select a school','warning');return;}
   if(school !== '__ALL__' && (!grade || grade === '')){toast('Select a grade','warning');return;}
   showLoading(true);
-  // ✅ FIXED: proper object syntax with 'data' key
   State.reports={school:school,grade:grade,subject:subject,data:[]};
   const result=await Store.getGradeReport(school,grade,subject);
   showLoading(false);
@@ -1653,7 +1619,6 @@ document.getElementById('btnGenerateReport').onclick=async()=>{
   }else{
     document.getElementById('reportResults').classList.add('hidden');
     document.getElementById('noReportData').classList.remove('hidden');
-    document.getElementById('pdfPreview').classList.add('hidden');
     toast(result.err||'No marks data found','warning');
   }
 };
