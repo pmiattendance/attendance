@@ -95,9 +95,8 @@ background: var(--primary-gradient);
 -webkit-text-fill-color: transparent;
 background-clip: text;
 }
-.back-btn {
+.back-btn, .home-btn {
 position: absolute;
-left: 16px;
 background: var(--surface-alt);
 border: 1px solid var(--border);
 border-radius: var(--radius-full);
@@ -111,10 +110,13 @@ cursor: pointer;
 transition: var(--transition);
 color: var(--text-primary);
 box-shadow: var(--shadow-sm);
+text-decoration: none;
 }
-.back-btn:hover { background: #f1f5f9; border-color: var(--border-focus); transform: scale(1.03); }
-.back-btn:active { transform: scale(0.97); box-shadow: none; }
-.back-btn.hidden { display: none; }
+.back-btn { left: 16px; }
+.home-btn { right: 16px; font-size: 1rem; }
+.back-btn:hover, .home-btn:hover { background: #f1f5f9; border-color: var(--border-focus); transform: scale(1.03); }
+.back-btn:active, .home-btn:active { transform: scale(0.97); box-shadow: none; }
+.back-btn.hidden, .home-btn.hidden { display: none; }
 .sliding-text-container {
 overflow: hidden; white-space: nowrap; background: var(--primary-gradient);
 padding: 10px 0; margin-bottom: 8px;
@@ -431,52 +433,6 @@ border-radius: 10px;
 }
 .btn-delete-school:active, .btn-delete-student-quick:active { transform: scale(0.95); }
 @media (max-width: 480px) { .btn-delete-school, .btn-delete-student-quick { opacity: 1; } }
-
-/* PDF Preview Styles */
-.pdf-preview {
-  background: var(--surface-alt);
-  border-radius: var(--radius);
-  padding: 16px;
-  margin: 16px 0;
-  font-family: 'Courier New', monospace;
-  font-size: 0.8rem;
-  max-height: 200px;
-  overflow-y: auto;
-  border: 1px solid var(--border);
-}
-.pdf-preview h4 {
-  margin: 0 0 8px 0;
-  color: var(--primary);
-  font-weight: 600;
-}
-.pdf-preview .header {
-  text-align: center;
-  border-bottom: 2px solid var(--border);
-  padding-bottom: 8px;
-  margin-bottom: 12px;
-}
-.pdf-preview .row {
-  display: flex;
-  justify-content: space-between;
-  padding: 4px 0;
-  border-bottom: 1px dashed var(--border);
-}
-.pdf-preview .row:last-child { border-bottom: none; }
-.pdf-preview .label { font-weight: 500; color: var(--text-primary); }
-.pdf-preview .value { color: var(--text-secondary); }
-.pdf-preview .bar {
-  height: 6px;
-  background: var(--surface);
-  border-radius: 3px;
-  margin-top: 4px;
-  overflow: hidden;
-}
-.pdf-preview .bar-fill {
-  height: 100%;
-  background: var(--primary-gradient);
-  border-radius: 3px;
-  transition: width 0.3s ease;
-}
 </style>
 </head>
 <body>
@@ -486,6 +442,7 @@ border-radius: 10px;
 <header class="header">
 <button id="backBtn" class="back-btn hidden" aria-label="Go back">←</button>
 <h1>Pravin More Institute</h1>
+<a href="https://pmiattendance.github.io" id="homeBtn" class="home-btn" aria-label="Home" title="Go to Home">🏠</a>
 </header>
 <div class="footer-credit">MADE BY BHAVESH PAWAR</div>
 <main class="content">
@@ -681,12 +638,24 @@ border-radius: 10px;
 </div>
 </div>
 
-<!-- Firebase SDK -->
+<!-- Firebase SDK - DUAL APP SETUP -->
 <script type="module">
+// Import Firebase SDKs
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { getFirestore, collection, doc, getDoc, setDoc, getDocs, query, where, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-const firebaseConfig = {
+// ✅ SHARED DB CONFIG (student master data)
+const sharedConfig = {
+  apiKey: "AIzaSyAE1yC1o5zXGYJGKeQwD6KSkfXW2d3O4lY",
+  authDomain: "student-35c40.firebaseapp.com",
+  projectId: "student-35c40",
+  storageBucket: "student-35c40.firebasestorage.app",
+  messagingSenderId: "660670414770",
+  appId: "1:660670414770:web:ca04b3567ba3d53a97eeab"
+};
+
+// ✅ ATTENDANCE DB CONFIG (attendance records only)
+const attendanceConfig = {
   apiKey: "AIzaSyCD9OsuMsCipDIxne_x3t41UW-waZD3LFQ",
   authDomain: "pmiattendance-4841a.firebaseapp.com",
   projectId: "pmiattendance-4841a",
@@ -695,14 +664,19 @@ const firebaseConfig = {
   appId: "1:424810497641:web:2daacbac6ccce231a1c4f8"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+// Initialize both Firebase apps
+const sharedApp = initializeApp(sharedConfig, 'shared');
+const attendanceApp = initializeApp(attendanceConfig, 'attendance');
+
+// Get Firestore instances
+const dbShared = getFirestore(sharedApp);      // For schools/grades/students/subjects
+const dbAttendance = getFirestore(attendanceApp); // For attendanceLogs/subjectStats
 
 const AVAILABLE_SUBJECTS = ['Maths','Biology','Physics','Chemistry','Language','Literature','Geography','History','French'];
 
 // ===== Cache System =====
 const Cache = {
-  prefix: 'attendflow_cache_', ttl: 1000*60*30,
+  prefix: 'attendflow_cache_', ttl: 1000*60*2,
   key(type,params){ 
     const paramStr = params ? JSON.stringify(params) : 'empty';
     return this.prefix+type+'_'+paramStr.replace(/[^a-zA-Z0-9]/g,'_'); 
@@ -719,20 +693,22 @@ const Store = {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 },
   fmt(d){if(!d)return'';const[y,m,dd]=d.split('-');return`${dd}/${m}/${y}`;},
-  async getSchools(){const c=Cache.get('schoolList',{});if(c)return c;try{const q=query(collection(db,'schools')),s=await getDocs(q),r=s.docs.map(d=>({id:d.id,...d.data()}));Cache.set('schoolList',{},r);return r;}catch(e){console.error('Get schools error:',e);return Cache.get('schoolList',{})||[];}},
-  async addSchool(name){const n=name.trim();if(n.length<2)return{ok:false,err:'Name too short'};try{const ref=doc(db,'schools',n);if((await getDoc(ref)).exists())return{ok:false,err:'Already exists'};await setDoc(ref,{name:n,created:new Date().toISOString()});Cache.invalidate('schoolList',{});return{ok:true};}catch(e){console.error('Add school error:',e);return{ok:false,err:'Save failed: '+e.message};}},
-  async deleteSchool(schoolName){try{showLoading(true);const gRef=collection(db,'schools',schoolName,'grades'),gSnap=await getDocs(gRef);for(const gd of gSnap.docs){const sRef=collection(db,'schools',schoolName,'grades',gd.id,'students'),sSnap=await getDocs(sRef);await Promise.all(sSnap.docs.map(d=>deleteDoc(d.ref)));await deleteDoc(gd.ref);}await deleteDoc(doc(db,'schools',schoolName));Cache.invalidate('schoolList',{});Cache.invalidate('gradeList',{school:schoolName});Cache.clearAll();return{ok:true};}catch(e){console.error('Delete school error:',e);return{ok:false,err:e.message};}finally{showLoading(false);}},
-  async getGrades(schoolName){const c=Cache.get('gradeList',{school:schoolName});if(c)return c;try{const q=query(collection(db,'schools',schoolName,'grades')),s=await getDocs(q),r=s.docs.map(d=>({id:d.id,...d.data()}));Cache.set('gradeList',{school:schoolName},r);return r;}catch(e){console.error('Get grades error:',e);return Cache.get('gradeList',{school:schoolName})||[];}},
-  async addGrade(schoolName,gradeName){const g=gradeName.trim();if(!g)return{ok:false,err:'Grade required'};try{const ref=doc(db,'schools',schoolName,'grades',g);if((await getDoc(ref)).exists())return{ok:false,err:'Grade exists'};await setDoc(ref,{name:g,school:schoolName,created:new Date().toISOString()});Cache.invalidate('gradeList',{school:schoolName});Cache.invalidate('schoolList',{});return{ok:true};}catch(e){console.error('Add grade error:',e);return{ok:false,err:'Save failed: '+e.message};}},
-  async getStudents(schoolName,gradeName){const c=Cache.get('students',{school:schoolName,grade:gradeName});if(c)return c;try{const q=query(collection(db,'schools',schoolName,'grades',gradeName,'students')),s=await getDocs(q),r=s.docs.map(d=>({id:d.id,...d.data()}));Cache.set('students',{school:schoolName,grade:gradeName},r);return r;}catch(e){console.error('Get students error:',e);return Cache.get('students',{school:schoolName,grade:gradeName})||[];}},
-  async addStudent(schoolName,gradeName,name,subjects){const n=name.trim();if(n.length<2)return{ok:false,err:'Name too short'};if(!subjects||subjects.length===0)return{ok:false,err:'Select at least one subject'};try{const sRef=collection(db,'schools',schoolName,'grades',gradeName,'students'),q=query(sRef,where('name','==',n)),snap=await getDocs(q);if(!snap.empty)return{ok:false,err:'Already enrolled'};const newRef=doc(sRef);await setDoc(newRef,{name:n,subjects:subjects,added:new Date().toISOString()});Cache.invalidate('students',{school:schoolName,grade:gradeName});Cache.invalidate('gradeList',{school:schoolName});Cache.invalidate('schoolList',{});return{ok:true,id:newRef.id};}catch(e){console.error('Add student error:',e);return{ok:false,err:'Save failed: '+e.message};}},
-  async deleteStudent(schoolName,gradeName,studentId){try{await deleteDoc(doc(db,'schools',schoolName,'grades',gradeName,'students',studentId));Cache.invalidate('students',{school:schoolName,grade:gradeName});Cache.invalidate('gradeList',{school:schoolName});Cache.invalidate('schoolList',{});return{ok:true};}catch(e){console.error('Delete student error:',e);return{ok:false,err:e.message};}},
   
-  // ✅ FIXED: saveAttendanceRecord with proper subjectStats update
+  // ✅ MASTER DATA METHODS → Use dbShared
+  async getSchools(){const c=Cache.get('schoolList',{});if(c)return c;try{const q=query(collection(dbShared,'schools')),s=await getDocs(q),r=s.docs.map(d=>({id:d.id,...d.data()}));Cache.set('schoolList',{},r);return r;}catch(e){console.error('Get schools error:',e);return Cache.get('schoolList',{})||[];}},
+  async addSchool(name){const n=name.trim();if(n.length<2)return{ok:false,err:'Name too short'};try{const ref=doc(dbShared,'schools',n);if((await getDoc(ref)).exists())return{ok:false,err:'Already exists'};await setDoc(ref,{name:n,created:new Date().toISOString()});Cache.invalidate('schoolList',{});return{ok:true};}catch(e){console.error('Add school error:',e);return{ok:false,err:'Save failed: '+e.message};}},
+  async deleteSchool(schoolName){try{showLoading(true);const gRef=collection(dbShared,'schools',schoolName,'grades'),gSnap=await getDocs(gRef);for(const gd of gSnap.docs){const sRef=collection(dbShared,'schools',schoolName,'grades',gd.id,'students'),sSnap=await getDocs(sRef);await Promise.all(sSnap.docs.map(d=>deleteDoc(d.ref)));await deleteDoc(gd.ref);}await deleteDoc(doc(dbShared,'schools',schoolName));Cache.invalidate('schoolList',{});Cache.invalidate('gradeList',{school:schoolName});Cache.clearAll();return{ok:true};}catch(e){console.error('Delete school error:',e);return{ok:false,err:e.message};}finally{showLoading(false);}},
+  async getGrades(schoolName){const c=Cache.get('gradeList',{school:schoolName});if(c)return c;try{const q=query(collection(dbShared,'schools',schoolName,'grades')),s=await getDocs(q),r=s.docs.map(d=>({id:d.id,...d.data()}));Cache.set('gradeList',{school:schoolName},r);return r;}catch(e){console.error('Get grades error:',e);return Cache.get('gradeList',{school:schoolName})||[];}},
+  async addGrade(schoolName,gradeName){const g=gradeName.trim();if(!g)return{ok:false,err:'Grade required'};try{const ref=doc(dbShared,'schools',schoolName,'grades',g);if((await getDoc(ref)).exists())return{ok:false,err:'Grade exists'};await setDoc(ref,{name:g,school:schoolName,created:new Date().toISOString()});Cache.invalidate('gradeList',{school:schoolName});Cache.invalidate('schoolList',{});return{ok:true};}catch(e){console.error('Add grade error:',e);return{ok:false,err:'Save failed: '+e.message};}},
+  async getStudents(schoolName,gradeName){const c=Cache.get('students',{school:schoolName,grade:gradeName});if(c)return c;try{const q=query(collection(dbShared,'schools',schoolName,'grades',gradeName,'students')),s=await getDocs(q),r=s.docs.map(d=>({id:d.id,...d.data()}));Cache.set('students',{school:schoolName,grade:gradeName},r);return r;}catch(e){console.error('Get students error:',e);return Cache.get('students',{school:schoolName,grade:gradeName})||[];}},
+  async addStudent(schoolName,gradeName,name,subjects){const n=name.trim();if(n.length<2)return{ok:false,err:'Name too short'};if(!subjects||subjects.length===0)return{ok:false,err:'Select at least one subject'};try{const sRef=collection(dbShared,'schools',schoolName,'grades',gradeName,'students'),q=query(sRef,where('name','==',n)),snap=await getDocs(q);if(!snap.empty)return{ok:false,err:'Already enrolled'};const newRef=doc(sRef);await setDoc(newRef,{name:n,subjects:subjects,added:new Date().toISOString()});Cache.invalidate('students',{school:schoolName,grade:gradeName});Cache.invalidate('gradeList',{school:schoolName});Cache.invalidate('schoolList',{});return{ok:true,id:newRef.id};}catch(e){console.error('Add student error:',e);return{ok:false,err:'Save failed: '+e.message};}},
+  async deleteStudent(schoolName,gradeName,studentId){try{await deleteDoc(doc(dbShared,'schools',schoolName,'grades',gradeName,'students',studentId));Cache.invalidate('students',{school:schoolName,grade:gradeName});Cache.invalidate('gradeList',{school:schoolName});Cache.invalidate('schoolList',{});return{ok:true};}catch(e){console.error('Delete student error:',e);return{ok:false,err:e.message};}},
+  
+  // ✅ ATTENDANCE METHODS → Use dbAttendance
   async saveAttendanceRecord(school,grade,subject,student,status){
     try{
       const logId = `${Store.today()}_${subject.replace(/\s+/g,'_')}_${student.id}`;
-      const logRef = doc(db, 'schools', school, 'grades', grade, 'attendanceLogs', logId);
+      const logRef = doc(dbAttendance, 'schools', school, 'grades', grade, 'attendanceLogs', logId);
       await setDoc(logRef, {
         date: Store.today(),
         subject,
@@ -743,7 +719,7 @@ const Store = {
       });
       
       // Update subjectStats for reports
-      const statsRef = doc(db, 'schools', school, 'grades', grade, 'students', student.id, 'subjectStats', subject);
+      const statsRef = doc(dbAttendance, 'schools', school, 'grades', grade, 'students', student.id, 'subjectStats', subject);
       const snap = await getDoc(statsRef);
       
       if(snap.exists()){
@@ -766,7 +742,7 @@ const Store = {
   
   async getStudentSummary(school,grade,studentId){
     try{
-      const snap=await getDocs(collection(db,'schools',school,'grades',grade,'students',studentId,'subjectStats'));
+      const snap=await getDocs(collection(dbAttendance,'schools',school,'grades',grade,'students',studentId,'subjectStats'));
       const sum={};
       snap.docs.forEach(d=>{sum[d.id]=d.data();});
       return{ok:true,sum};
@@ -776,14 +752,14 @@ const Store = {
   async deleteStudentAttendance(school,grade,studentId,subject=null){
     try{
       showLoading(true);
-      let q=query(collection(db,'schools',school,'grades',grade,'attendanceLogs'),where('studentId','==',studentId));
+      let q=query(collection(dbAttendance,'schools',school,'grades',grade,'attendanceLogs'),where('studentId','==',studentId));
       if(subject)q=query(q,where('subject','==',subject));
       const logs=await getDocs(q);
       await Promise.all(logs.docs.map(d=>deleteDoc(d.ref)));
       if(subject){
-        await deleteDoc(doc(db,'schools',school,'grades',grade,'students',studentId,'subjectStats',subject));
+        await deleteDoc(doc(dbAttendance,'schools',school,'grades',grade,'students',studentId,'subjectStats',subject));
       }else{
-        const stats=await getDocs(collection(db,'schools',school,'grades',grade,'students',studentId,'subjectStats'));
+        const stats=await getDocs(collection(dbAttendance,'schools',school,'grades',grade,'students',studentId,'subjectStats'));
         await Promise.all(stats.docs.map(d=>deleteDoc(d.ref)));
       }
       Cache.invalidate('students',{school,grade});
@@ -796,22 +772,22 @@ const Store = {
     if(password !== 'PMI') return {ok:false, err:'Invalid password'};
     try{
       showLoading(true);
-      const schools = await Store.getSchools();
+      const schools = await Store.getSchools(); // from shared DB
       let totalDeleted = 0;
       for(const school of schools){
-        const grades = await Store.getGrades(school.name);
+        const grades = await Store.getGrades(school.name); // from shared DB
         for(const grade of grades){
-          const logsRef = collection(db, 'schools', school.name, 'grades', grade.name, 'attendanceLogs');
+          const logsRef = collection(dbAttendance, 'schools', school.name, 'grades', grade.name, 'attendanceLogs');
           const logsSnap = await getDocs(logsRef);
-          const batch = writeBatch(db);
+          const batch = writeBatch(dbAttendance);
           logsSnap.docs.forEach(docRef => batch.delete(docRef.ref));
           await batch.commit();
           totalDeleted += logsSnap.size;
-          const students = await Store.getStudents(school.name, grade.name);
+          const students = await Store.getStudents(school.name, grade.name); // from shared DB
           for(const student of students){
-            const statsRef = collection(db, 'schools', school.name, 'grades', grade.name, 'students', student.id, 'subjectStats');
+            const statsRef = collection(dbAttendance, 'schools', school.name, 'grades', grade.name, 'students', student.id, 'subjectStats');
             const statsSnap = await getDocs(statsRef);
-            const statsBatch = writeBatch(db);
+            const statsBatch = writeBatch(dbAttendance);
             statsSnap.docs.forEach(docRef => statsBatch.delete(docRef.ref));
             await statsBatch.commit();
           }
@@ -829,7 +805,6 @@ const Store = {
   
   async getGradeReport(school,grade,subjectFilter=null){
     try{
-      console.log('🔍 Generating report for:', { school, grade, subjectFilter });
       let report=[];
       if(school === '__ALL__'){
         const allSchools = await Store.getSchools();
@@ -854,21 +829,19 @@ const Store = {
       } else {
         report = await this._getSingleGradeReport(school, grade, subjectFilter);
       }
-      console.log('📊 Report data:', report);
       return{ok:true,report};
     }catch(e){console.error('Get grade report error:',e);return{ok:false,err:e.message};}
   },
   
-  // ✅ FIXED: _getSingleGradeReport with proper subjectStats reading
   async _getSingleGradeReport(school, grade, subjectFilter = null) {
     try {
-      const students = await Store.getStudents(school, grade);
+      const students = await Store.getStudents(school, grade); // from shared DB
       const report = [];
       
       for (const student of students) {
-        // Get subjectStats for this student
+        // Get subjectStats for this student from attendance DB
         const statsSnap = await getDocs(
-          collection(db, 'schools', school, 'grades', grade, 'students', student.id, 'subjectStats')
+          collection(dbAttendance, 'schools', school, 'grades', grade, 'students', student.id, 'subjectStats')
         );
         
         const subjects = subjectFilter ? [subjectFilter] : (student.subjects || []);
@@ -906,10 +879,31 @@ const State = {
   screen: 'dashboard',
   session: { school:null, grade:null, subject:null, students:[], idx:0, results:[] },
   studentList: { school:null, grade:null, selectedStudent:null },
-  reports: { school:null, grade:null, subject:null, data:[] },  // ✅ Added 'data:' key
+  reports: { school:null, grade:null, subject:null, data:[] },
   deletePending: null,
   libsReady: false
 };
+
+// ===== CROSS-TAB CACHE SYNC =====
+window.addEventListener('storage', (e) => {
+  if (e.key && (e.key.startsWith('attendflow_cache_') || e.key.startsWith('pmimarks_cache_'))) {
+    Cache.clearAll();
+    try {
+      if (State.screen === 'select-school') renderSchoolList();
+      else if (State.screen === 'student-list') renderStudentListView();
+      else if (['dashboard', 'add-menu', 'reports'].includes(State.screen)) renderSchoolSelects(true);
+    } catch(err) {}
+  }
+});
+
+window.addEventListener('focus', () => {
+  Cache.clearAll();
+  try {
+    if (State.screen === 'select-school') renderSchoolList();
+    else if (State.screen === 'student-list') renderStudentListView();
+    else if (['dashboard', 'add-menu', 'reports'].includes(State.screen)) renderSchoolSelects(true);
+  } catch(err) {}
+});
 
 function showLoading(show){document.getElementById('loadingOverlay').classList.toggle('hidden',!show);}
 
@@ -1007,7 +1001,6 @@ function renderStudentDetail(student){const initials=student.name.split(' ').map
 document.getElementById('detailAvatar').textContent=initials;document.getElementById('detailName').textContent=student.name;document.getElementById('detailMeta').textContent=State.studentList.school+' • '+State.studentList.grade;
 const subjectsContainer=document.getElementById('detailSubjects');if(student.subjects&&student.subjects.length>0){subjectsContainer.innerHTML=student.subjects.map(subj=>'<span class="subject-tag">'+subj+'</span>').join('');}else{subjectsContainer.innerHTML='<span class="text-muted">No subjects enrolled</span>';}}
 
-
 function renderReportTable(reportData,school,grade,subject){
   if(!reportData||reportData.length===0){
     document.getElementById('reportResults').classList.add('hidden');
@@ -1022,12 +1015,9 @@ function renderReportTable(reportData,school,grade,subject){
   const subjectLabel = subject || 'All Subjects';
   document.getElementById('reportSubtitle').textContent=`${schoolLabel} • ${gradeLabel} • ${subjectLabel} • ${reportData.length} record(s)`;
   
-  // Enable download buttons
-  // Enable ZIP download button
-const zipBtn = document.getElementById('btnDownloadZIP');
-zipBtn.disabled = !window.JSZip;
+  const zipBtn = document.getElementById('btnDownloadZIP');
+  zipBtn.disabled = !window.JSZip;
   
-  // Store data for downloads
   State.reports={school:school,grade:grade,subject:subject,data:reportData};
 }
 
@@ -1251,7 +1241,6 @@ document.getElementById('reportSchool').onchange=async function(){
   }catch(e){gradeSel.innerHTML='<option value="">Error loading</option>';toast('Failed to load grades','error');}
 };
 
-// ✅ FIXED: btnGenerateReport with correct data key
 document.getElementById('btnGenerateReport').onclick=async()=>{
   const school=document.getElementById('reportSchool').value,
         grade=document.getElementById('reportGrade').value,
@@ -1259,7 +1248,7 @@ document.getElementById('btnGenerateReport').onclick=async()=>{
   if(!school || school === ''){toast('Select a school','warning');return;}
   if(school !== '__ALL__' && (!grade || grade === '')){toast('Select a grade','warning');return;}
   showLoading(true);
-  State.reports={school:school,grade:grade,subject:subject,data:[]};  // ✅ FIXED
+  State.reports={school:school,grade:grade,subject:subject,data:[]};
   const result=await Store.getGradeReport(school,grade,subject);
   showLoading(false);
   if(result.ok && result.report && result.report.length>0){
@@ -1271,8 +1260,6 @@ document.getElementById('btnGenerateReport').onclick=async()=>{
     toast(result.err||'No attendance data found','warning');
 }
 };
-
-
 
 document.getElementById('btnDownloadZIP').onclick=downloadReportZIP;
 document.getElementById('schoolList').onclick=async(e)=>{const item=e.target.closest('.list-item[data-school]');if(item){if(e.target.closest('.btn-delete-school'))return;State.session.school=item.dataset.school;await renderGradeList(item.dataset.school);show('select-grade');}};
@@ -1326,7 +1313,6 @@ async function waitForLibraries(){
       if(window.JSZip && window.jspdf?.jsPDF){
         clearInterval(check);
         State.libsReady = true;
-        // Only enable ZIP button since PDF button was removed
         const zipBtn = document.getElementById('btnDownloadZIP');
         if(zipBtn) zipBtn.disabled = false;
         resolve();
