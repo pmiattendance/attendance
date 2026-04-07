@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>PMI Report Cards</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<style>
+:root {
+--bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 60%, #f093fb 100%);
+--surface: #ffffff;
+--surface-alt: #f8fafc;
+--text-primary: #1e293b;
+--text-secondary: #64748b;
+--border: #e2e8f0;
+--border-focus: #818cf8;
+--primary: #6366f1;
+--primary-gradient: linear-gradient(135deg, #6366f1, #8b5cf6);
+--primary-hover: #4f46e5;
+--success: #10b981;
+--success-gradient: linear-gradient(135deg, #10b981, #22c55e);
+--danger: #ef4444;
+--danger-gradient: linear-gradient(135deg, #ef4444, #f97316);
+--warning: #f59e0b;
+--shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+--shadow: 0 4px 14px rgba(0,0,0,0.08);
+--shadow-lg: 0 10px 40px rgba(0,0,0,0.12);
+--shadow-glow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+--radius: 16px;
+--radius-lg: 24px;
+--radius-full: 9999px;
+--transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+--transition-slow: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body {
+font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, sans-serif;
+background: var(--bg-gradient);
+color: var(--text-primary);
+min-height: 100vh;
+line-height: 1.45;
+-webkit-font-smoothing: antialiased;
+-moz-osx-font-smoothing: grayscale;
+padding-bottom: env(safe-area-inset-bottom);
+}
+#app {
+max-width: 480px;
+margin: 0 auto;
+min-height: 100vh;
+display: flex;
+flex-direction: column;
+background: var(--surface);
+position: relative;
+padding-bottom: calc(20px + env(safe-area-inset-bottom));
+}
+@media (min-width: 768px) {
+#app {
+min-height: auto;
+margin: 24px auto;
+border-radius: var(--radius-lg);
+box-shadow: var(--shadow-lg);
+max-height: 92vh;
+overflow: hidden;
+}
+body {
+display: flex;
+align-items: center;
+justify-content: center;
+padding: 24px;
+}
+}
+.header {
+padding: 20px 22px;
+background: var(--surface);
+border-bottom: 1px solid var(--border);
+display: flex;
+align-items: center;
+justify-content: center;
+position: relative;
+z-index: 20;
+}
+.header h1 {
+font-size: 1.3rem;
+font-weight: 700;
+letter-spacing: -0.025em;
+background: var(--primary-gradient);
+-webkit-background-clip: text;
+-webkit-text-fill-color: transparent;
+background-clip: text;
+}
+.back-btn, .home-btn {
+position: absolute;
+background: var(--surface-alt);
+border: 1px solid var(--border);
+border-radius: var(--radius-full);
+width: 38px;
+height: 38px;
+display: flex;
+align-items: center;
+justify-content: center;
+font-size: 1.2rem;
+cursor: pointer;
+transition: var(--transition);
+color: var(--text-primary);
+box-shadow: var(--shadow-sm);
+text-decoration: none;
+}
+.back-btn { left: 16px; }
+.home-btn { right: 16px; font-size: 1rem; }
+.back-btn:hover, .home-btn:hover { background: #f1f5f9; border-color: var(--border-focus); transform: scale(1.03); }
+.back-btn:active, .home-btn:active { transform: scale(0.97); box-shadow: none; }
+.back-btn.hidden, .home-btn.hidden { display: none; }
+.footer-credit {
+position: fixed; bottom: 12px; right: 16px; font-size: 0.75rem; font-weight: 700;
+color: var(--text-secondary); background: rgba(255,255,255,0.9);
+padding: 6px 12px; border-radius: 8px; box-shadow: var(--shadow-sm); z-index: 100;
+bottom: calc(12px + env(safe-area-inset-bottom));
+}
+.content {
+flex: 1; padding: 22px 20px; overflow-y: auto;
+-webkit-overflow-scrolling: touch; scroll-behavior: smooth;
+}
+.screen { display: none; animation: slideUp 0.28s ease-out; }
+.screen.active { display: block; }
+@keyframes slideUp { from { opacity: 0.95; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+.dashboard { display: grid; gap: 16px; padding-top: 8px; }
+.action-card {
+background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+padding: 24px 22px; cursor: pointer; transition: var(--transition-slow);
+display: flex; align-items: center; gap: 18px; position: relative; overflow: hidden; box-shadow: var(--shadow-sm);
+}
+.action-card::before {
+content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+background: var(--primary-gradient); opacity: 0; transition: var(--transition);
+}
+.action-card.reports::before { background: linear-gradient(135deg, #3b82f6, #6366f1); }
+.action-card:hover { border-color: var(--border-focus); box-shadow: var(--shadow); transform: translateY(-2px); }
+.action-card:hover::before { opacity: 1; }
+.action-card:active { transform: translateY(0); box-shadow: var(--shadow-sm); }
+.action-icon {
+width: 56px; height: 56px; border-radius: 16px; display: flex;
+align-items: center; justify-content: center; font-size: 1.6rem; flex-shrink: 0; position: relative;
+}
+.action-card.reports .action-icon {
+background: linear-gradient(135deg, #dbeafe, #93c5fd); color: #1e40af;
+box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+}
+.action-content h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 4px; color: var(--text-primary); }
+.action-content p { color: var(--text-secondary); font-size: 0.92rem; line-height: 1.4; }
+.form { display: flex; flex-direction: column; gap: 18px; margin-top: 6px; }
+.field { display: flex; flex-direction: column; gap: 7px; }
+.field label { font-size: 0.93rem; font-weight: 500; color: var(--text-primary); display: flex; align-items: center; gap: 5px; }
+.field select {
+padding: 15px 17px; border: 1.5px solid var(--border); border-radius: 13px;
+font-size: 1rem; background: var(--surface-alt); transition: var(--transition); width: 100%;
+}
+.field select:focus {
+outline: none; border-color: var(--border-focus); background: var(--surface); box-shadow: var(--shadow-glow);
+}
+.form-actions { display: flex; gap: 12px; padding-top: 6px; margin-top: 4px; border-top: 1px solid var(--border); }
+.btn {
+padding: 14px 22px; border: none; border-radius: 13px; font-weight: 500; font-size: 0.96rem;
+cursor: pointer; transition: var(--transition); display: inline-flex;
+align-items: center; justify-content: center; gap: 6px; position: relative; overflow: hidden;
+}
+.btn::after { content: ''; position: absolute; inset: 0; background: rgba(255,255,255,0.12); opacity: 0; transition: var(--transition); }
+.btn:active::after { opacity: 1; }
+.btn-primary {
+background: var(--primary-gradient); color: white; flex: 1;
+box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+}
+.btn-primary:hover {
+background: linear-gradient(135deg, var(--primary-hover), #7c3aed);
+transform: translateY(-1px); box-shadow: 0 6px 20px rgba(99, 102, 241, 0.45);
+}
+.btn-primary:active { transform: translateY(1px); box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3); }
+.btn:disabled { opacity: 0.65; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+.btn-loading { position: relative; pointer-events: none; }
+.btn-loading::after {
+content: ''; position: absolute; width: 18px; height: 18px;
+border: 2px solid rgba(255,255,255,0.3); border-top-color: white;
+border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.progress { margin: 16px 0 20px; }
+.progress-bar { height: 7px; background: var(--surface-alt); border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
+.progress-fill { height: 100%; background: var(--primary-gradient); border-radius: 10px; transition: width 0.3s ease; box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3); }
+.progress-text { text-align: center; color: var(--text-secondary); font-size: 0.89rem; margin-bottom: 9px; font-weight: 500; }
+#toastContainer {
+position: fixed; top: 20px; right: 20px; z-index: 2000;
+display: flex; flex-direction: column; gap: 10px; max-width: 320px;
+}
+.toast {
+background: var(--surface); border-left: 4px solid var(--primary); border-radius: 12px;
+padding: 14px 18px; box-shadow: var(--elevation-3); display: flex;
+align-items: center; gap: 12px; animation: slideInToast 0.3s ease, fadeOutToast 0.3s ease 2.7s forwards; min-width: 280px;
+}
+.toast.success { border-left-color: var(--success); }
+.toast.error { border-left-color: var(--danger); }
+.toast.warning { border-left-color: var(--warning); }
+.toast-icon { font-size: 1.3rem; font-weight: 700; }
+.toast.success .toast-icon { color: var(--success); }
+.toast.error .toast-icon { color: var(--danger); }
+.toast.warning .toast-icon { color: var(--warning); }
+.toast-message { font-size: 0.93rem; color: var(--text-primary); flex: 1; }
+@keyframes slideInToast { from { opacity: 0; transform: translateX(100px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes fadeOutToast { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(100px); } }
+.loading-overlay {
+position: fixed; inset: 0; background: rgba(255,255,255,0.9);
+display: flex; align-items: center; justify-content: center; z-index: 1000;
+}
+.loading-spinner {
+width: 40px; height: 40px; border: 3px solid var(--border);
+border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+.hidden { display: none !important; }
+.mt-4 { margin-top: 16px; }
+.mb-4 { margin-bottom: 16px; }
+.text-muted { color: var(--text-secondary); }
+.text-sm { font-size: 0.89rem; }
+.font-medium { font-weight: 500; }
+.font-semibold { font-weight: 600; }
+.text-center { text-align: center; }
+.complete-header { text-align: center; padding: 26px 0 18px; }
+.complete-icon {
+width: 72px; height: 72px; border-radius: 50%; background: var(--success-gradient);
+color: white; display: flex; align-items: center; justify-content: center;
+font-size: 2rem; font-weight: 700; margin: 0 auto 14px;
+box-shadow: 0 8px 25px rgba(16, 185, 129, 0.45);
+}
+.complete-title { font-size: 1.35rem; font-weight: 700; margin-bottom: 5px; color: var(--text-primary); }
+.complete-subtitle { color: var(--text-secondary); font-size: 0.94rem; }
+@media (max-width: 480px) {
+.header { padding: 18px 18px; } .content { padding: 18px 16px; }
+.action-card { padding: 22px 20px; }
+.btn { padding: 13px 20px; }
+.footer-credit { bottom: calc(8px + env(safe-area-inset-bottom)); right: 12px; font-size: 0.68rem; }
+#toastContainer { top: 12px; right: 12px; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+<div id="loadingOverlay" class="loading-overlay hidden"><div class="loading-spinner"></div></div>
+<div id="toastContainer"></div>
+<header class="header">
+<button id="backBtn" class="back-btn hidden" aria-label="Go back">←</button>
+<h1>Pravin More Institute</h1>
+<a href="https://pmiattendance.github.io" id="homeBtn" class="home-btn" aria-label="Home" title="Go to Home">🏠</a>
+</header>
+<div class="footer-credit">MADE BY BHAVESH PAWAR</div>
+<main class="content">
+<section id="screen-dashboard" class="screen active">
+<div class="dashboard">
+<div class="action-card reports" id="btnGenerate" role="button" tabindex="0">
+<div class="action-icon">📊</div><div class="action-content"><h3>Generate Report Cards</h3><p>Create & download student report cards</p></div>
+</div>
+</div>
+</section>
+
+<section id="screen-reports" class="screen">
+<p class="text-muted mb-4 font-medium">Generate Report Cards</p>
+<div class="form">
+<div class="field"><label>Select School</label>
+<select id="reportSchool" required>
+<option value="__ALL__">🌐 All Schools</option>
+<option value="">Choose a school...</option>
+</select>
+</div>
+<div class="field"><label>Select Grade</label>
+<select id="reportGrade" required disabled>
+<option value="__ALL__">📚 All Grades</option>
+<option value="">Select school first</option>
+</select>
+</div>
+</div>
+<div class="form-actions mt-4">
+<button type="button" class="btn btn-primary" id="btnGenerateReport">🎯 Generate Report Cards</button>
+</div>
+<div class="progress mt-4 hidden" id="progressContainer">
+<div class="progress-text"><span id="currentNum">0</span> of <span id="totalNum">0</span></div>
+<div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+</div>
+<div id="downloadSection" class="mt-4 hidden">
+<div style="background:var(--surface-alt);border-radius:var(--radius);padding:24px;text-align:center;">
+<h4 class="font-semibold mb-2">✅ Report Cards Ready!</h4>
+<p class="text-sm text-muted mb-4" id="reportSubtitle"></p>
+<button type="button" class="btn btn-primary" id="btnDownloadZIP" style="width:100%;max-width:280px;">📦 Download ZIP File</button>
+<p class="text-xs text-muted mt-3">ZIP contains: School/Grade/Student.pdf</p>
+</div>
+</div>
+</section>
+
+<section id="screen-complete" class="screen">
+<div class="complete-header"><div class="complete-icon">✓</div><h2 class="complete-title">Generation Complete</h2><p class="complete-subtitle" id="completeSummary">All report cards created</p></div>
+<div class="form-actions mt-4"><button class="btn btn-primary" id="btnHome" style="flex:1">Home</button></div>
+</section>
+</main>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { getFirestore, collection, doc, getDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+const sharedConfig = {
+apiKey: "AIzaSyAE1yC1o5zXGYJGKeQwD6KSkfXW2d3O4lY",
+authDomain: "student-35c40.firebaseapp.com",
+projectId: "student-35c40",
+storageBucket: "student-35c40.firebasestorage.app",
+messagingSenderId: "660670414770",
+appId: "1:660670414770:web:ca04b3567ba3d53a97eeab"
+};
+
+const attendanceConfig = {
+apiKey: "AIzaSyCD9OsuMsCipDIxne_x3t41UW-waZD3LFQ",
+authDomain: "pmiattendance-4841a.firebaseapp.com",
+projectId: "pmiattendance-4841a",
+storageBucket: "pmiattendance-4841a.firebasestorage.app",
+messagingSenderId: "424810497641",
+appId: "1:424810497641:web:2daacbac6ccce231a1c4f8"
+};
+
+const marksConfig = {
+apiKey: "AIzaSyCsa_i-Wgrr2k5gBWlTUWc5kiESqtu-Otw",
+authDomain: "pmimarks.firebaseapp.com",
+projectId: "pmimarks",
+storageBucket: "pmimarks.firebasestorage.app",
+messagingSenderId: "355756820642",
+appId: "1:355756820642:web:e52df9e2a26ccb223aaffb"
+};
+
+const sharedApp = initializeApp(sharedConfig, 'shared');
+const attendanceApp = initializeApp(attendanceConfig, 'attendance');
+const marksApp = initializeApp(marksConfig, 'marks');
+
+const dbShared = getFirestore(sharedApp);
+const dbAttendance = getFirestore(attendanceApp);
+const dbMarks = getFirestore(marksApp);
+
+const Cache = {
+prefix: 'pmireportcards_cache_', ttl: 1000*60*5,
+key(type,params){ 
+const paramStr = params ? JSON.stringify(params) : 'empty';
+return this.prefix+type+'_'+paramStr.replace(/[^a-zA-Z0-9]/g,'_'); 
+},
+get(type,params){ try{const k=this.key(type,params),c=localStorage.getItem(k);if(!c)return null;const{data,timestamp}=JSON.parse(c);if(Date.now()-timestamp>this.ttl){localStorage.removeItem(k);return null;}return data;}catch{return null;}},
+set(type,params,data){try{localStorage.setItem(this.key(type,params),JSON.stringify({data,timestamp:Date.now()}));}catch(e){console.warn('Cache save failed:',e);}},
+clearAll(){Object.keys(localStorage).forEach(k=>{if(k.startsWith(this.prefix))localStorage.removeItem(k);});}
+};
+
+const Store = {
+today(){return new Date().toISOString().split('T')[0];},
+fmt(d){if(!d)return'';const[y,m,dd]=d.split('-');return`${dd}/${m}/${y}`;},
+
+async getSchools(){const c=Cache.get('schoolList',{});if(c)return c;try{const q=query(collection(dbShared,'schools')),s=await getDocs(q),r=s.docs.map(d=>({id:d.id,...d.data()}));Cache.set('schoolList',{},r);return r;}catch(e){console.error('Get schools error:',e);return Cache.get('schoolList',{})||[];}},
+
+async getGrades(schoolName){const c=Cache.get('gradeList',{school:schoolName});if(c)return c;try{const q=query(collection(dbShared,'schools',schoolName,'grades')),s=await getDocs(q),r=s.docs.map(d=>({id:d.id,...d.data()}));Cache.set('gradeList',{school:schoolName},r);return r;}catch(e){console.error('Get grades error:',e);return Cache.get('gradeList',{school:schoolName})||[];}},
+
+async getStudents(schoolName,gradeName){const c=Cache.get('students',{school:schoolName,grade:gradeName});if(c)return c;try{const q=query(collection(dbShared,'schools',schoolName,'grades',gradeName,'students')),s=await getDocs(q),r=s.docs.map(d=>({id:d.id,...d.data()}));Cache.set('students',{school:schoolName,grade:gradeName},r);return r;}catch(e){console.error('Get students error:',e);return Cache.get('students',{school:schoolName,grade:gradeName})||[];}},
+
+// ✅ FIXED: Now correctly fetches single document stats
+async getAttendanceData(school, grade, studentId, subject) {
+  try {
+    const statsRef = doc(dbAttendance, 'schools', school, 'grades', grade, 'students', studentId, 'subjectStats', subject);
+    const snap = await getDoc(statsRef);
+    if (snap.exists()) {
+      const d = snap.data();
+      return { present: d.presentCount || 0, total: d.totalLectures || 0 };
+    }
+    return { present: 0, total: 0 };
+  } catch(e) {
+    console.error('Get attendance error:', e);
+    return { present: 0, total: 0 };
+  }
+},
+
+async getMarksData(school, grade, studentId, subject) {
+  try {
+    const logsSnap = await getDocs(
+      query(
+        collection(dbMarks, 'schools', school, 'grades', grade, 'marksLogs'),
+        where('studentId', '==', studentId)
+      )
+    );
+    const subjectLogs = logsSnap.docs
+      .map(d => d.data())
+      .filter(log => log.subject === subject)
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    return subjectLogs;
+  } catch(e) {
+    console.error('Get marks error:', e);
+    return [];
+  }
+}
+};
+
+const State = {
+  screen: 'dashboard',
+  reports: { school:null, grade:null, data:[] },
+  libsReady: false
+};
+
+function showLoading(show){document.getElementById('loadingOverlay').classList.toggle('hidden',!show);}
+
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+id).classList.add('active');
+  const backBtn=document.getElementById('backBtn');
+  if(id==='dashboard'){backBtn.classList.add('hidden');}
+  else{backBtn.classList.remove('hidden');backBtn.onclick=()=>show('dashboard');}
+  State.screen=id;document.querySelector('.content').scrollTop=0;
+}
+
+function toast(message,type='success'){
+  const container=document.getElementById('toastContainer'),t=document.createElement('div');
+  t.className='toast '+type;const icon=type==='success'?'✓':type==='error'?'✕':'⚠';
+  t.innerHTML='<span class="toast-icon">'+icon+'</span><span class="toast-message">'+message+'</span>';
+  container.appendChild(t);setTimeout(()=>t.remove(),3000);
+}
+
+async function renderSchoolSelects(){
+  showLoading(true);try{
+    const schools=await Store.getSchools();
+    const baseOpts = '<option value="__ALL__">🌐 All Schools</option><option value="">Choose a school...</option>';
+    const opts = baseOpts + schools.map(s=>'<option value="'+s.name+'">'+s.name+'</option>').join('');
+    document.getElementById('reportSchool').innerHTML = opts;
+  }catch(e){toast('Failed to load schools','error');}finally{showLoading(false);}
+}
+
+document.getElementById('reportSchool').onchange=async function(){
+  const school=this.value;
+  State.reports.school=school;
+  const gradeSel=document.getElementById('reportGrade');
+  if(!school || school === '__ALL__'){
+    gradeSel.innerHTML = '<option value="__ALL__">📚 All Grades (All Schools)</option>';
+    gradeSel.value = '__ALL__';
+    gradeSel.disabled = false;
+    State.reports.grade = '__ALL__';
+    return;
+  }
+  gradeSel.disabled=true;
+  gradeSel.innerHTML='<option value="">Loading...</option>';
+  try{
+    const grades=await Store.getGrades(school);
+    if(!grades.length){gradeSel.innerHTML='<option value="">No grades</option>';gradeSel.disabled=true;return;}
+    gradeSel.innerHTML='<option value="__ALL__">📚 All Grades</option><option value="">Select a grade...</option>'+grades.map(g=>'<option value="'+g.name+'">'+g.name+'</option>').join('');
+    gradeSel.disabled=false;
+    State.reports.grade = null;
+  }catch(e){gradeSel.innerHTML='<option value="">Error loading</option>';toast('Failed to load grades','error');}
+};
+
+async function generateReportCardPDF(student, school, grade, marksData, attendanceData){
+  if(!window.jspdf || !window.jspdf.jsPDF) throw new Error('PDF library not loaded.');
+  const {jsPDF} = window.jspdf;
+  const doc = new jsPDF();
+
+  let y = 20;
+
+  doc.setFillColor(99, 102, 241);
+  doc.rect(0, 0, 210, 35, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(22);
+  doc.setFont('helvetica', 'bold');
+  doc.text("Pravin More's Institute", 105, 18, null, null, 'center');
+  doc.setFontSize(16);
+  doc.text('Report Card', 105, 28, null, null, 'center');
+
+  doc.setTextColor(30, 41, 59);
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Student name: ' + student.name, 20, 50);
+  doc.text('School name: ' + school, 20, 58);
+  doc.text('Grade: ' + grade, 20, 66);
+
+  y = 85;
+
+  const subjects = student.subjects || [];
+  for(const subject of subjects){
+    if(y > 230){
+      doc.addPage();
+      y = 20;
+    }
+
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(99, 102, 241);
+    doc.text(subject + ':', 20, y);
+    y += 8;
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(30, 41, 59);
+
+    const subjectMarks = marksData[subject] || [];
+    if(subjectMarks.length > 0){
+      subjectMarks.forEach(log => {
+        if(y > 270){
+          doc.addPage();
+          y = 20;
+        }
+        const dateStr = log.date ? Store.fmt(log.date) : 'N/A';
+        const marksStr = log.isAbsent ? 'Absent' : `${log.obtainedMarks} / ${log.totalMarks}`;
+        doc.text(`date : ${dateStr}  Marks : ${marksStr}`, 25, y);
+        y += 7;
+      });
+    } else {
+      doc.text('No marks recorded', 25, y);
+      y += 7;
+    }
+    y += 4;
+  }
+
+  y += 8;
+  if(y > 250){
+    doc.addPage();
+    y = 20;
+  }
+
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(99, 102, 241);
+  doc.text('Attendance:', 20, y);
+  y += 8;
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(30, 41, 59);
+
+  let attLine = '';
+  subjects.forEach((subject, idx) => {
+    const att = attendanceData[subject] || { present: 0, total: 0 };
+    const shortSub = subject.length > 6 ? subject.substring(0,5)+'.' : subject;
+    attLine += `${shortSub}: ${att.present}/${att.total}  `;
+    if(attLine.length > 70 || idx === subjects.length - 1) {
+      if(y > 270){ doc.addPage(); y = 20; }
+      doc.text(attLine.trim(), 20, y);
+      y += 7;
+      attLine = '';
+    }
+  });
+
+  doc.setFontSize(8);
+  doc.setTextColor(100, 116, 139);
+  doc.text('© Pravin More Institute - Confidential', 105, 290, null, null, 'center');
+
+  return doc;
+}
+
+async function generateAllReportCards(){
+  const {school, grade} = State.reports;
+  let schoolsToProcess = [];
+  let gradesToProcess = [];
+
+  if(school === '__ALL__'){
+    const allSchools = await Store.getSchools();
+    schoolsToProcess = allSchools.map(s => s.name);
+  } else {
+    schoolsToProcess = [school];
+  }
+
+  showLoading(true);
+  toast('Generating report cards...', 'success');
+
+  const allPDFs = [];
+  let totalStudents = 0;
+  let processedCount = 0;
+
+  for(const schoolName of schoolsToProcess){
+    let schoolGrades = [];
+    if(grade === '__ALL__'){
+      const grades = await Store.getGrades(schoolName);
+      schoolGrades = grades.map(g => g.name);
+    } else {
+      schoolGrades = [grade];
+    }
+
+    for(const gradeName of schoolGrades){
+      const students = await Store.getStudents(schoolName, gradeName);
+      totalStudents += students.length;
+
+      for(const student of students){
+        const marksData = {};
+        const attendanceData = {};
+
+        for(const subject of (student.subjects || [])){
+          marksData[subject] = await Store.getMarksData(schoolName, gradeName, student.id, subject);
+          attendanceData[subject] = await Store.getAttendanceData(schoolName, gradeName, student.id, subject);
+        }
+
+        const pdf = await generateReportCardPDF(student, schoolName, gradeName, marksData, attendanceData);
+        const safeStudentName = student.name.replace(/[^a-z0-9]/gi, '_').substring(0, 30);
+        const safeSchool = schoolName.replace(/[^a-z0-9]/gi, '_').substring(0, 30);
+        const safeGrade = gradeName.replace(/[^a-z0-9]/gi, '_').substring(0, 20);
+
+        allPDFs.push({
+          pdf: pdf,
+          path: `${safeSchool}/${safeGrade}/${safeStudentName}.pdf`
+        });
+
+        processedCount++;
+        document.getElementById('currentNum').textContent = processedCount;
+        document.getElementById('totalNum').textContent = totalStudents;
+        const percent = Math.round((processedCount / totalStudents) * 100);
+        document.getElementById('progressFill').style.width = percent + '%';
+      }
+    }
+  }
+
+  showLoading(false);
+  State.reports.data = allPDFs;
+  document.getElementById('downloadSection').classList.remove('hidden');
+  document.getElementById('reportSubtitle').textContent = `${processedCount} report card(s) ready for download`;
+  document.getElementById('completeSummary').textContent = `${processedCount} report cards generated successfully`;
+}
+
+document.getElementById('btnGenerateReport').onclick = async () => {
+  const school = document.getElementById('reportSchool').value;
+  const grade = document.getElementById('reportGrade').value;
+
+  if(!school || school === ''){toast('Select a school','warning');return;}
+  if(school !== '__ALL__' && (!grade || grade === '')){toast('Select a grade','warning');return;}
+
+  State.reports = { school, grade, data: [] };
+  document.getElementById('progressContainer').classList.remove('hidden');
+  document.getElementById('downloadSection').classList.add('hidden');
+
+  try{
+    await generateAllReportCards();
+  }catch(e){
+    console.error('Generation error:', e);
+    toast('Generation failed: ' + e.message, 'error');
+    showLoading(false);
+  }
+};
+
+document.getElementById('btnDownloadZIP').onclick = async () => {
+  if(!State.reports.data || State.reports.data.length === 0){
+    toast('No data to download', 'warning');
+    return;
+  }
+  if(!window.JSZip){
+    toast('ZIP library loading...', 'warning');
+    return;
+  }
+
+  showLoading(true);
+  toast('Creating ZIP file...', 'success');
+
+  try{
+    const zip = new JSZip();
+
+    State.reports.data.forEach(({pdf, path}) => {
+      zip.file(path, pdf.output('arraybuffer'));
+    });
+
+    const content = await zip.generateAsync({type: 'blob'});
+    const timestamp = Store.today().replace(/-/g, '');
+    const filename = `PMI_ReportCards_${timestamp}.zip`;
+    saveAs(content, filename);
+
+    toast('Downloaded ' + State.reports.data.length + ' report cards', 'success');
+    show('complete');
+  }catch(e){
+    console.error('ZIP error:', e);
+    toast('Download failed: ' + e.message, 'error');
+  }finally{
+    showLoading(false);
+  }
+};
+
+document.getElementById('btnHome').onclick = () => show('dashboard');
+document.getElementById('btnGenerate').onclick = async () => {
+  await renderSchoolSelects();
+  State.reports = { school:null, grade:null, data:[] };
+  document.getElementById('reportGrade').innerHTML = '<option value="__ALL__">📚 All Grades</option><option value="">Select school first</option>';
+  document.getElementById('reportGrade').disabled = true;
+  document.getElementById('progressContainer').classList.add('hidden');
+  document.getElementById('downloadSection').classList.add('hidden');
+  show('reports');
+};
+
+async function waitForLibraries(){
+  return new Promise(resolve => {
+    const check = setInterval(() => {
+      if(window.JSZip && window.jspdf?.jsPDF){
+        clearInterval(check);
+        State.libsReady = true;
+        resolve();
+      }
+    }, 100);
+    setTimeout(() => {clearInterval(check);resolve();}, 10000);
+  });
+}
+
+(async()=>{
+  await waitForLibraries();
+  toast('PMI Report Cards Ready ✓');
+})();
+</script>
+</body>
+</html>
