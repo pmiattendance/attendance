@@ -531,7 +531,8 @@ async function generateReportCardPDF(student, school, grade, marksData, attendan
   let attLine = '';
   subjects.forEach((subject, idx) => {
     const att = attendanceData[subject] || { present: 0, total: 0 };
-    const shortSub = subject.length > 6 ? subject.substring(0,5)+'.' : subject;
+    // Show up to 15 characters, then truncate with ellipsis
+const shortSub = subject.length > 15 ? subject.substring(0, 12) + '...' : subject;
     attLine += `${shortSub}: ${att.present}/${att.total}  `;
     if(attLine.length > 70 || idx === subjects.length - 1) {
       if(y > 270){ doc.addPage(); y = 20; }
