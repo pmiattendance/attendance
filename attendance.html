@@ -8,6 +8,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<!-- SheetJS for Excel parsing -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 /* ===== PREMIUM THEME - MATERIAL DESIGN INSPIRED ===== */
 :root {
@@ -422,17 +424,105 @@ border-radius: 10px;
 .footer-credit { bottom: calc(8px + env(safe-area-inset-bottom)); right: 12px; font-size: 0.68rem; }
 #toastContainer { top: 12px; right: 12px; }
 }
-.btn-delete-school, .btn-delete-student-quick {
+.btn-delete-school, .btn-delete-student-quick, .btn-edit-student-quick {
   opacity: 0; transition: var(--transition); width: 32px; height: 32px;
   display: flex; align-items: center; justify-content: center;
   border-radius: 8px !important; padding: 0 !important; flex-shrink: 0;
 }
-.list-item:hover .btn-delete-school, .list-item:hover .btn-delete-student-quick { opacity: 1; }
-.btn-delete-school:hover, .btn-delete-student-quick:hover {
+.list-item:hover .btn-delete-school, .list-item:hover .btn-delete-student-quick, .list-item:hover .btn-edit-student-quick { opacity: 1; }
+.btn-delete-school:hover, .btn-delete-student-quick:hover, .btn-edit-student-quick:hover {
   transform: scale(1.05); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4) !important;
 }
-.btn-delete-school:active, .btn-delete-student-quick:active { transform: scale(0.95); }
-@media (max-width: 480px) { .btn-delete-school, .btn-delete-student-quick { opacity: 1; } }
+.btn-delete-school:active, .btn-delete-student-quick:active, .btn-edit-student-quick:active { transform: scale(0.95); }
+@media (max-width: 480px) { .btn-delete-school, .btn-delete-student-quick, .btn-edit-student-quick { opacity: 1 !important; } }
+
+/* Excel upload section styles */
+.excel-upload-section {
+  background: var(--surface-alt);
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.excel-upload-section.active {
+  border-color: var(--primary);
+  background: rgba(99, 102, 241, 0.08);
+}
+.excel-upload-btn {
+  background: var(--primary-gradient);
+  color: white;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.excel-upload-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4); }
+.excel-upload-btn:active { transform: translateY(1px); }
+.excel-clear-btn {
+  background: var(--danger-gradient);
+  color: white;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition);
+  border: none;
+  flex-shrink: 0;
+}
+.excel-clear-btn:hover { transform: scale(1.1); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4); }
+.excel-info {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  flex: 1;
+  min-width: 200px;
+}
+.excel-queue-badge {
+  background: var(--success-gradient);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+#excelFileInput { display: none; }
+
+/* Subject quick-select buttons */
+#btnSelectPCMB, #btnSelectAll, #btnClearSubjects {
+  transition: var(--transition);
+}
+#btnSelectPCMB:hover { background: #dbeafe; border-color: #6366f1; }
+#btnSelectAll:hover { background: #d1fae5; border-color: #10b981; }
+#btnClearSubjects:hover { background: #fee2e2; border-color: #ef4444; }
+
+/* Auto-enroll mode indicator */
+.auto-enroll-indicator {
+  background: linear-gradient(135deg, #10b981, #22c55e);
+  color: white;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  animation: pulse 2s infinite;
+}
+.auto-enroll-indicator.hidden { display: none; }
 </style>
 </head>
 <body>
@@ -498,7 +588,33 @@ border-radius: 10px;
 <div class="field"><label>School <span class="req">*</span></label><select id="selectStudentSchool" required><option value="">Choose...</option></select></div>
 <div class="field"><label>Grade <span class="req">*</span></label><select id="selectStudentGrade" required disabled><option value="">Select school first</option></select></div>
 <div class="field"><label>Student Name <span class="req">*</span></label><input type="text" id="inputStudent" placeholder="Full name" required autocomplete="name"></div>
-<div class="field"><label>Subjects <span class="req">*</span></label><div class="subjects-container" id="subjectsContainer"></div><p class="text-sm text-muted">Select one or more subjects this student is enrolled in</p></div>
+
+<!-- Excel Upload Section -->
+<div class="excel-upload-section" id="excelUploadSection">
+  <button type="button" class="excel-upload-btn" id="btnUploadExcel">📊 Upload Excel</button>
+  <input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv">
+  <button type="button" class="excel-clear-btn hidden" id="btnClearExcel" title="Stop & Clear">✕</button>
+  <div class="excel-info">
+    <span id="excelStatus">Upload Excel with Name & Subject columns</span>
+    <span id="excelQueueBadge" class="excel-queue-badge hidden"></span>
+  </div>
+</div>
+
+<!-- Auto-enroll indicator -->
+<div class="auto-enroll-indicator hidden" id="autoEnrollIndicator">
+  ⚡ Auto-enroll mode: Next student will load automatically
+</div>
+
+<div class="field">
+  <label>Subjects <span class="req">*</span></label>
+  <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+    <button type="button" class="btn btn-secondary" id="btnSelectPCMB" style="padding:8px 14px;font-size:0.85rem;">🔬 PCMB</button>
+    <button type="button" class="btn btn-secondary" id="btnSelectAll" style="padding:8px 14px;font-size:0.85rem;">✓ All</button>
+    <button type="button" class="btn btn-secondary" id="btnClearSubjects" style="padding:8px 14px;font-size:0.85rem;">✕ Clear</button>
+  </div>
+  <div class="subjects-container" id="subjectsContainer"></div>
+  <p class="text-sm text-muted">Select one or more subjects this student is enrolled in</p>
+</div>
 <div class="form-actions"><button type="button" class="btn btn-secondary" id="cancelStudent">Cancel</button><button type="submit" class="btn btn-primary" id="saveStudentBtn">Enroll Student</button></div>
 </form>
 </section>
@@ -674,6 +790,143 @@ const dbAttendance = getFirestore(attendanceApp); // For attendanceLogs/subjectS
 
 const AVAILABLE_SUBJECTS = ['Maths','Biology','Physics','Chemistry','Language','Literature','Geography','History','French'];
 
+// Subject shortcut mapping (case-insensitive)
+const SUBJECT_SHORTCUTS = {
+  'p': 'Physics',
+  'c': 'Chemistry',
+  'm': 'Maths',
+  'b': 'Biology',
+  'g': 'Geography',
+  'h': 'History',
+  'e1': 'Language',
+  'e2': 'Literature',
+  'f': 'French'
+};
+
+// ===== XSS Protection Helper =====
+function escapeHtml(str) {
+  if (typeof str !== 'string') return str;
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ===== Excel Upload & Auto-Enroll Queue =====
+const ExcelQueue = {
+  data: [],
+  currentIndex: 0,
+  school: null,
+  grade: null,
+  
+  parseShortcuts(shortcutStr) {
+    if(!shortcutStr) return [];
+    const cleaned = shortcutStr.toString().toLowerCase().replace(/\s+/g, '');
+    const subjects = new Set();
+    
+    // Try comma-separated first
+    if(cleaned.includes(',')) {
+      const parts = cleaned.split(',').map(s => s.trim());
+      parts.forEach(part => {
+        if(SUBJECT_SHORTCUTS[part]) subjects.add(SUBJECT_SHORTCUTS[part]);
+      });
+    } else {
+      // Parse concatenated shortcuts (handle e1/e2 specially)
+      let i = 0;
+      while(i < cleaned.length) {
+        // Check for 2-char shortcuts first (e1, e2)
+        if(i + 1 < cleaned.length) {
+          const twoChar = cleaned.slice(i, i+2);
+          if(SUBJECT_SHORTCUTS[twoChar]) {
+            subjects.add(SUBJECT_SHORTCUTS[twoChar]);
+            i += 2;
+            continue;
+          }
+        }
+        // Check single char
+        const oneChar = cleaned[i];
+        if(SUBJECT_SHORTCUTS[oneChar]) {
+          subjects.add(SUBJECT_SHORTCUTS[oneChar]);
+        }
+        i++;
+      }
+    }
+    return Array.from(subjects).filter(s => AVAILABLE_SUBJECTS.includes(s));
+  },
+  
+  load(file, school, grade) {
+    return new Promise((resolve, reject) => {
+      // ✅ Check XLSX library availability
+      if (typeof window.XLSX === 'undefined') {
+        reject(new Error('Excel library not loaded. Please check your internet connection.'));
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+          
+          // Find Name and Subject columns (case-insensitive)
+          const headers = jsonData[0]?.map(h => String(h).toLowerCase().trim()) || [];
+          const nameIdx = headers.findIndex(h => h === 'name' || h === 'student name');
+          const subjectIdx = headers.findIndex(h => h === 'subject' || h === 'subjects');
+          
+          if(nameIdx === -1) throw new Error('Column "Name" not found in Excel');
+          
+          const parsed = [];
+          for(let i = 1; i < jsonData.length; i++) {
+            const row = jsonData[i];
+            const name = row[nameIdx]?.toString().trim();
+            if(!name) continue;
+            
+            const shortcut = row[subjectIdx]?.toString().trim() || '';
+            const subjects = this.parseShortcuts(shortcut);
+            
+            if(subjects.length > 0) {
+              parsed.push({ name, subjects });
+            }
+          }
+          
+          if(parsed.length === 0) throw new Error('No valid student data found');
+          
+          this.data = parsed;
+          this.currentIndex = 0;
+          this.school = school;
+          this.grade = grade;
+          resolve(parsed.length);
+        } catch(err) {
+          reject(err);
+        }
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsArrayBuffer(file);
+    });
+  },
+  
+  next() {
+    if(this.currentIndex >= this.data.length) return null;
+    return this.data[this.currentIndex++];
+  },
+  
+  hasNext() {
+    return this.currentIndex < this.data.length;
+  },
+  
+  remaining() {
+    return this.data.length - this.currentIndex;
+  },
+  
+  clear() {
+    this.data = [];
+    this.currentIndex = 0;
+    this.school = null;
+    this.grade = null;
+  }
+};
+
 // ===== Cache System =====
 const Cache = {
   prefix: 'attendflow_cache_', ttl: 1000*60*2,
@@ -702,6 +955,28 @@ const Store = {
   async addGrade(schoolName,gradeName){const g=gradeName.trim();if(!g)return{ok:false,err:'Grade required'};try{const ref=doc(dbShared,'schools',schoolName,'grades',g);if((await getDoc(ref)).exists())return{ok:false,err:'Grade exists'};await setDoc(ref,{name:g,school:schoolName,created:new Date().toISOString()});Cache.invalidate('gradeList',{school:schoolName});Cache.invalidate('schoolList',{});return{ok:true};}catch(e){console.error('Add grade error:',e);return{ok:false,err:'Save failed: '+e.message};}},
   async getStudents(schoolName,gradeName){const c=Cache.get('students',{school:schoolName,grade:gradeName});if(c)return c;try{const q=query(collection(dbShared,'schools',schoolName,'grades',gradeName,'students')),s=await getDocs(q),r=s.docs.map(d=>({id:d.id,...d.data()}));Cache.set('students',{school:schoolName,grade:gradeName},r);return r;}catch(e){console.error('Get students error:',e);return Cache.get('students',{school:schoolName,grade:gradeName})||[];}},
   async addStudent(schoolName,gradeName,name,subjects){const n=name.trim();if(n.length<2)return{ok:false,err:'Name too short'};if(!subjects||subjects.length===0)return{ok:false,err:'Select at least one subject'};try{const sRef=collection(dbShared,'schools',schoolName,'grades',gradeName,'students'),q=query(sRef,where('name','==',n)),snap=await getDocs(q);if(!snap.empty)return{ok:false,err:'Already enrolled'};const newRef=doc(sRef);await setDoc(newRef,{name:n,subjects:subjects,added:new Date().toISOString()});Cache.invalidate('students',{school:schoolName,grade:gradeName});Cache.invalidate('gradeList',{school:schoolName});Cache.invalidate('schoolList',{});return{ok:true,id:newRef.id};}catch(e){console.error('Add student error:',e);return{ok:false,err:'Save failed: '+e.message};}},
+  async updateStudent(schoolName,gradeName,studentId,name,subjects){
+    if(!subjects||subjects.length===0) return {ok:false,err:'Select at least one subject'};
+    try{
+      // Check if name changed and already exists
+      if(name.trim().length < 2) return {ok:false,err:'Name too short'};
+      const sRef=collection(dbShared,'schools',schoolName,'grades',gradeName,'students');
+      const q=query(sRef,where('name','==',name.trim()));
+      const snap=await getDocs(q);
+      if(!snap.empty && !snap.docs.some(d => d.id === studentId)) return {ok:false,err:'Student with this name already exists'};
+      
+      await setDoc(doc(dbShared,'schools',schoolName,'grades',gradeName,'students',studentId),{
+        name:name.trim(),
+        subjects:subjects,
+        added:(await getDoc(doc(dbShared,'schools',schoolName,'grades',gradeName,'students',studentId))).data()?.added || new Date().toISOString(),
+        updated:new Date().toISOString()
+      });
+      Cache.invalidate('students',{school:schoolName,grade:gradeName});
+      Cache.invalidate('gradeList',{school:schoolName});
+      Cache.invalidate('schoolList',{});
+      return{ok:true};
+    }catch(e){console.error('Update student error:',e);return{ok:false,err:'Save failed: '+e.message};}
+  },
   async deleteStudent(schoolName,gradeName,studentId){try{await deleteDoc(doc(dbShared,'schools',schoolName,'grades',gradeName,'students',studentId));Cache.invalidate('students',{school:schoolName,grade:gradeName});Cache.invalidate('gradeList',{school:schoolName});Cache.invalidate('schoolList',{});return{ok:true};}catch(e){console.error('Delete student error:',e);return{ok:false,err:e.message};}},
   
   // ✅ ATTENDANCE METHODS → Use dbAttendance
@@ -881,7 +1156,9 @@ const State = {
   studentList: { school:null, grade:null, selectedStudent:null },
   reports: { school:null, grade:null, subject:null, data:[] },
   deletePending: null,
-  libsReady: false
+  libsReady: false,
+  editMode: null,
+  autoEnrollMode: false
 };
 
 // ===== CROSS-TAB CACHE SYNC =====
@@ -905,124 +1182,305 @@ window.addEventListener('focus', () => {
   } catch(err) {}
 });
 
-function showLoading(show){document.getElementById('loadingOverlay').classList.toggle('hidden',!show);}
+function showLoading(show){
+  const el = document.getElementById('loadingOverlay');
+  if(el) el.classList.toggle('hidden',!show);
+}
 
 function show(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
-  document.getElementById('screen-'+id).classList.add('active');
+  const target = document.getElementById('screen-'+id);
+  if(target) target.classList.add('active');
   const backBtn=document.getElementById('backBtn');
-  if(id==='dashboard'){backBtn.classList.add('hidden');}
-  else if(['add-school','add-grade','add-student','student-list','student-detail','reports'].includes(id)){backBtn.classList.remove('hidden');backBtn.onclick=()=>show('dashboard');}
-  else if(['select-school','select-grade','select-subject','attendance','complete'].includes(id)){backBtn.classList.remove('hidden');backBtn.onclick=()=>{const flow=['select-school','select-grade','select-subject','attendance','complete'],i=flow.indexOf(id);if(i>0){if(i===1)State.session.school=null;if(i===2)State.session.grade=null;if(i===3)State.session.subject=null;show(flow[i-1]);}else{show('dashboard');}};}
-  else if(id==='add-menu'){backBtn.classList.remove('hidden');backBtn.onclick=()=>show('dashboard');}
-  State.screen=id;document.querySelector('.content').scrollTop=0;
+  if(id==='dashboard'){backBtn?.classList.add('hidden');}
+  else if(['add-school','add-grade','add-student','student-list','student-detail','reports'].includes(id)){backBtn?.classList.remove('hidden');backBtn.onclick=()=>show('dashboard');}
+  else if(['select-school','select-grade','select-subject','attendance','complete'].includes(id)){backBtn?.classList.remove('hidden');backBtn.onclick=()=>{const flow=['select-school','select-grade','select-subject','attendance','complete'],i=flow.indexOf(id);if(i>0){if(i===1)State.session.school=null;if(i===2)State.session.grade=null;if(i===3)State.session.subject=null;show(flow[i-1]);}else{show('dashboard');}};}
+  else if(id==='add-menu'){backBtn?.classList.remove('hidden');backBtn.onclick=()=>show('dashboard');}
+  State.screen=id;const content=document.querySelector('.content');if(content)content.scrollTop=0;
 }
 
 function toast(message,type='success'){
-  const container=document.getElementById('toastContainer'),t=document.createElement('div');
+  const container=document.getElementById('toastContainer');
+  if(!container) return;
+  const t=document.createElement('div');
   t.className='toast '+type;const icon=type==='success'?'✓':type==='error'?'✕':'⚠';
-  t.innerHTML='<span class="toast-icon">'+icon+'</span><span class="toast-message">'+message+'</span>';
-  container.appendChild(t);setTimeout(()=>t.remove(),3000);
+  t.innerHTML='<span class="toast-icon">'+escapeHtml(icon)+'</span><span class="toast-message">'+escapeHtml(message)+'</span>';
+  container.appendChild(t);setTimeout(()=>{if(t.parentNode) t.remove();},3000);
 }
 
 function confirmDialog(message,onConfirm,onCancel){
-  document.getElementById('confirmMessage').textContent=message;
-  document.getElementById('confirmDialog').classList.remove('hidden');
-  const handleConfirm=()=>{document.getElementById('confirmDialog').classList.add('hidden');document.getElementById('confirmDelete').removeEventListener('click',handleConfirm);document.getElementById('confirmCancel').removeEventListener('click',handleCancel);onConfirm();};
-  const handleCancel=()=>{document.getElementById('confirmDialog').classList.add('hidden');document.getElementById('confirmDelete').removeEventListener('click',handleConfirm);document.getElementById('confirmCancel').removeEventListener('click',handleCancel);if(onCancel)onCancel();};
-  document.getElementById('confirmDelete').addEventListener('click',handleConfirm);
-  document.getElementById('confirmCancel').addEventListener('click',handleCancel);
+  const msgEl = document.getElementById('confirmMessage');
+  const dialog = document.getElementById('confirmDialog');
+  if(!msgEl || !dialog) return;
+  
+  msgEl.textContent=message;
+  dialog.classList.remove('hidden');
+  const handleConfirm=()=>{dialog.classList.add('hidden');document.getElementById('confirmDelete')?.removeEventListener('click',handleConfirm);document.getElementById('confirmCancel')?.removeEventListener('click',handleCancel);if(onConfirm)onConfirm();};
+  const handleCancel=()=>{dialog.classList.add('hidden');document.getElementById('confirmDelete')?.removeEventListener('click',handleConfirm);document.getElementById('confirmCancel')?.removeEventListener('click',handleCancel);if(onCancel)onCancel();};
+  document.getElementById('confirmDelete')?.addEventListener('click',handleConfirm);
+  document.getElementById('confirmCancel')?.addEventListener('click',handleCancel);
 }
 
 async function renderSchoolSelects(includeAllOption=false){
   showLoading(true);try{
     const schools=await Store.getSchools();
     const baseOpts = includeAllOption ? '<option value="__ALL__">🌐 All Schools</option><option value="">Choose a school...</option>' : '<option value="">Choose...</option>';
-    const opts = baseOpts + schools.map(s=>'<option value="'+s.name+'">'+s.name+'</option>').join('');
-    document.getElementById('selectGradeSchool').innerHTML = opts.replace('__ALL__','');
-    document.getElementById('selectStudentSchool').innerHTML = opts.replace('__ALL__','');
-    document.getElementById('filterSchool').innerHTML = '<option value="">Choose a school...</option>'+schools.map(s=>'<option value="'+s.name+'">'+s.name+'</option>').join('');
-    document.getElementById('reportSchool').innerHTML = opts;
+    const opts = baseOpts + schools.map(s=>'<option value="'+escapeHtml(s.name)+'">'+escapeHtml(s.name)+'</option>').join('');
+    
+    const gradeSchool = document.getElementById('selectGradeSchool');
+    const studentSchool = document.getElementById('selectStudentSchool');
+    const filterSchool = document.getElementById('filterSchool');
+    const reportSchool = document.getElementById('reportSchool');
+    
+    if(gradeSchool) gradeSchool.innerHTML = opts.replace('__ALL__','');
+    if(studentSchool) studentSchool.innerHTML = opts.replace('__ALL__','');
+    if(filterSchool) filterSchool.innerHTML = '<option value="">Choose a school...</option>'+schools.map(s=>'<option value="'+escapeHtml(s.name)+'">'+escapeHtml(s.name)+'</option>').join('');
+    if(reportSchool) reportSchool.innerHTML = opts;
   }catch(e){toast('Failed to load schools','error');}finally{showLoading(false);}
 }
 
 async function renderSchoolList(){
   showLoading(true);const list=document.getElementById('schoolList'),empty=document.getElementById('noSchools');
+  if(!list || !empty) { showLoading(false); return; }
+  
   try{const schools=await Store.getSchools();if(!schools.length){list.classList.add('hidden');empty.classList.remove('hidden');return;}
   empty.classList.add('hidden');list.classList.remove('hidden');list.innerHTML='';
   for(const school of schools){const grades=await Store.getGrades(school.name);let totalStudents=0;for(const grade of grades){const students=await Store.getStudents(school.name,grade.name);totalStudents+=students.length;}
   const item=document.createElement('div');item.className='list-item';item.dataset.school=school.name;
-  item.innerHTML='<div class="list-icon">'+school.name[0].toUpperCase()+'</div><div class="list-details"><h4>'+school.name+'</h4><p>'+grades.length+' grades • '+totalStudents+' students</p></div><button class="btn-delete-school" data-school="'+school.name+'" aria-label="Delete '+school.name+'">🗑️</button>';
+  item.innerHTML='<div class="list-icon">'+escapeHtml(school.name[0]?.toUpperCase()||'?')+'</div><div class="list-details"><h4>'+escapeHtml(school.name)+'</h4><p>'+grades.length+' grades • '+totalStudents+' students</p></div><button class="btn-delete-school" data-school="'+escapeHtml(school.name)+'" aria-label="Delete '+escapeHtml(school.name)+'">🗑️</button>';
   list.appendChild(item);}
-  document.querySelectorAll('.btn-delete-school').forEach(btn=>{btn.onclick=(e)=>{e.stopPropagation();const schoolName=btn.dataset.school;confirmDialog('Delete "'+schoolName+'" and all its grades & students? This cannot be undone.',async()=>{const result=await Store.deleteSchool(schoolName);if(result.ok){toast('School deleted ✓');await renderSchoolList();if(State.screen==='select-school')await renderSchoolList();}else{toast(result.err||'Delete failed','error');}});};});
+  
+  // ✅ Use event delegation for delete buttons
+  list.onclick = (e) => {
+    const btn = e.target.closest('.btn-delete-school');
+    if(btn){
+      e.stopPropagation();
+      const schoolName = btn.dataset.school;
+      confirmDialog('Delete "'+escapeHtml(schoolName)+'" and all its grades & students? This cannot be undone.',async()=>{
+        const result=await Store.deleteSchool(schoolName);
+        if(result.ok){toast('School deleted ✓');await renderSchoolList();if(State.screen==='select-school')await renderSchoolList();}else{toast(result.err||'Delete failed','error');}
+      });
+    }
+  };
   }catch(e){toast('Failed to load schools','error');}finally{showLoading(false);}
 }
 
 async function renderGradeList(school){
   showLoading(true);const list=document.getElementById('gradeList'),empty=document.getElementById('noGrades');
-  document.getElementById('selectedSchool').textContent=school;
+  const selectedSchoolEl = document.getElementById('selectedSchool');
+  if(!list || !empty || !selectedSchoolEl) { showLoading(false); return; }
+  
+  selectedSchoolEl.textContent=escapeHtml(school);
   try{const grades=await Store.getGrades(school);if(!grades.length){list.classList.add('hidden');empty.classList.remove('hidden');return;}
   empty.classList.add('hidden');list.classList.remove('hidden');list.innerHTML='';
   for(const grade of grades){const students=await Store.getStudents(school,grade.name);const item=document.createElement('div');item.className='list-item';item.dataset.grade=grade.name;
-  item.innerHTML='<div class="list-icon">'+grade.name[0].toUpperCase()+'</div><div class="list-details"><h4>'+grade.name+'</h4><p>'+students.length+' students</p></div>';list.appendChild(item);}
+  item.innerHTML='<div class="list-icon">'+escapeHtml(grade.name[0]?.toUpperCase()||'?')+'</div><div class="list-details"><h4>'+escapeHtml(grade.name)+'</h4><p>'+students.length+' students</p></div>';list.appendChild(item);}
   }catch(e){toast('Failed to load grades','error');}finally{showLoading(false);}
 }
 
-function renderSubjectsCheckboxes(){const container=document.getElementById('subjectsContainer');container.innerHTML=AVAILABLE_SUBJECTS.map(subject=>'<div class="subject-checkbox"><input type="checkbox" id="subj_'+subject.replace(/\s+/g,'_')+'" value="'+subject+'"><label for="subj_'+subject.replace(/\s+/g,'_')+'">'+subject+'</label></div>').join('');}
+function renderSubjectsCheckboxes(){const container=document.getElementById('subjectsContainer'); if(!container) return; container.innerHTML=AVAILABLE_SUBJECTS.map(subject=>'<div class="subject-checkbox"><input type="checkbox" id="subj_'+subject.replace(/\s+/g,'_')+'" value="'+escapeHtml(subject)+'"><label for="subj_'+subject.replace(/\s+/g,'_')+'">'+escapeHtml(subject)+'</label></div>').join('');}
 function getSelectedSubjects(){return Array.from(document.querySelectorAll('#subjectsContainer input[type="checkbox"]:checked')).map(cb=>cb.value);}
-function renderSubjectDropdown(){const select=document.getElementById('selectAttendanceSubject');select.innerHTML='<option value="">Select a subject...</option>'+AVAILABLE_SUBJECTS.map(subj=>'<option value="'+subj+'">'+subj+'</option>').join('');}
+function renderSubjectDropdown(){const select=document.getElementById('selectAttendanceSubject'); if(!select) return; select.innerHTML='<option value="">Select a subject...</option>'+AVAILABLE_SUBJECTS.map(subj=>'<option value="'+escapeHtml(subj)+'">'+escapeHtml(subj)+'</option>').join('');}
+
+// Quick subject selection handlers
+function selectPCMBSubjects() {
+  const pcmb = ['Maths', 'Biology', 'Physics', 'Chemistry'];
+  document.querySelectorAll('#subjectsContainer input[type="checkbox"]').forEach(cb => {
+    cb.checked = pcmb.includes(cb.value);
+  });
+}
+
+function selectAllSubjects() {
+  document.querySelectorAll('#subjectsContainer input[type="checkbox"]').forEach(cb => {
+    cb.checked = true;
+  });
+}
+
+function clearSubjects() {
+  document.querySelectorAll('#subjectsContainer input[type="checkbox"]').forEach(cb => {
+    cb.checked = false;
+  });
+}
 
 function renderCard(){
   const{students,idx,school,grade,subject}=State.session;
   if(idx>=students.length){complete();return;}
   const s=students[idx],initials=s.name.split(' ').map(n=>n.trim()[0]).filter(c=>c).slice(0,2).join('').toUpperCase()||'?';
-  document.getElementById('avatar').textContent=initials;
-  document.getElementById('sName').textContent=s.name;
-  document.getElementById('sMeta').textContent=school+' • '+grade+' • '+subject;
-  document.getElementById('currentNum').textContent=idx+1;
-  document.getElementById('totalNum').textContent=students.length;
-  const percent = students.length ? Math.round((idx / students.length) * 100) : 0;
-  document.getElementById('progressFill').style.width = percent + '%';
+  
+  const avatar = document.getElementById('avatar');
+  const sName = document.getElementById('sName');
+  const sMeta = document.getElementById('sMeta');
+  const currentNum = document.getElementById('currentNum');
+  const totalNum = document.getElementById('totalNum');
+  const progressFill = document.getElementById('progressFill');
+  
+  if(avatar) avatar.textContent=initials;
+  if(sName) sName.textContent=escapeHtml(s.name);
+  if(sMeta) sMeta.textContent=escapeHtml(school)+' • '+escapeHtml(grade)+' • '+escapeHtml(subject);
+  if(currentNum) currentNum.textContent=idx+1;
+  if(totalNum) totalNum.textContent=students.length;
+  if(progressFill) {
+    const percent = students.length ? Math.round((idx / students.length) * 100) : 0;
+    progressFill.style.width = percent + '%';
+  }
 }
 
-function makeReport(){const{school,grade,subject,results}=State.session,today=Store.fmt(Store.today()),present=results.filter(r=>r.status==='present').map(r=>'• '+r.name),absent=results.filter(r=>r.status==='absent').map(r=>'• '+r.name),msg='Attendance Report\n\n'+grade+' '+school+'\n\nSubject: '+subject+'\n\nDate: '+today+'\n\nPresent ('+present.length+')\n  '+(present.join('\n')||'• None')+'\n\nAbsent ('+absent.length+')\n  '+(absent.join('\n')||'• None')+'\n\nTotal: '+results.length+' students';
-document.getElementById('waPreview').textContent=msg;document.getElementById('waLink').href='https://api.whatsapp.com/send?text='+encodeURIComponent(msg);document.getElementById('completeSummary').textContent=present.length+' present • '+absent.length+' absent • '+results.length+' total';}
+function makeReport(){const{school,grade,subject,results}=State.session,today=Store.fmt(Store.today()),present=results.filter(r=>r.status==='present').map(r=>'• '+r.name),absent=results.filter(r=>r.status==='absent').map(r=>'• '+r.name),msg='Attendance Report\n\n'+escapeHtml(grade)+' '+escapeHtml(school)+'\n\nSubject: '+escapeHtml(subject)+'\n\nDate: '+today+'\n\nPresent ('+present.length+')\n  '+(present.join('\n')||'• None')+'\n\nAbsent ('+absent.length+')\n  '+(absent.join('\n')||'• None')+'\n\nTotal: '+results.length+' students';
+const waPreview = document.getElementById('waPreview');
+const waLink = document.getElementById('waLink');
+const completeSummary = document.getElementById('completeSummary');
+if(waPreview) waPreview.textContent=msg;
+if(waLink) waLink.href='https://api.whatsapp.com/send?text='+encodeURIComponent(msg);
+if(completeSummary) completeSummary.textContent=present.length+' present • '+absent.length+' absent • '+results.length+' total';}
 
-async function renderStudentListView(){const{school,grade}=State.studentList,list=document.getElementById('studentListView'),empty=document.getElementById('noStudents');
-if(!school||!grade){list.classList.add('hidden');empty.classList.remove('hidden');empty.querySelector('p').textContent='Select school and grade to view students';return;}
-showLoading(true);try{const students=await Store.getStudents(school,grade);if(!students.length){list.classList.add('hidden');empty.classList.remove('hidden');empty.querySelector('p').textContent='No students in this grade';return;}
+async function renderStudentListView(){const{school,grade}=State.studentList;const list=document.getElementById('studentListView'),empty=document.getElementById('noStudents');
+if(!list || !empty) return;
+
+if(!school||!grade){list.classList.add('hidden');empty.classList.remove('hidden');const p=empty.querySelector('p');if(p)p.textContent='Select school and grade to view students';document.getElementById('studentCount')?.remove();return;}
+showLoading(true);try{const students=await Store.getStudents(school,grade);
+
+// Update or create student count display
+let countEl = document.getElementById('studentCount');
+if(!countEl) {
+  countEl = document.createElement('p');
+  countEl.id = 'studentCount';
+  countEl.className = 'text-sm font-medium text-muted mb-2';
+  if(list.parentNode) list.parentNode.insertBefore(countEl, list);
+}
+
+if(!students.length){
+  if(countEl) countEl.textContent = '0 students found';
+  list.classList.add('hidden');
+  empty.classList.remove('hidden');
+  const p=empty.querySelector('p');if(p)p.textContent='No students in this grade';return;}
+
+if(countEl) countEl.textContent = `${students.length} student${students.length !== 1 ? 's' : ''} found`;
 empty.classList.add('hidden');list.classList.remove('hidden');list.innerHTML='';
 for(const student of students){const item=document.createElement('div');item.className='list-item';item.dataset.studentId=student.id;const initials=student.name.split(' ').map(n=>n.trim()[0]).filter(c=>c).slice(0,2).join('').toUpperCase()||'?';
-item.innerHTML='<div class="list-icon">'+initials+'</div><div class="list-details"><h4>'+student.name+'</h4><p>'+(student.subjects?.length||0)+' subjects</p></div><button class="btn-delete-student-quick" data-student-id="'+student.id+'" data-student-name="'+student.name+'" aria-label="Delete '+student.name+'">🗑️</button>';list.appendChild(item);}
-document.querySelectorAll('.btn-delete-student-quick').forEach(btn=>{btn.onclick=(e)=>{e.stopPropagation();const studentId=btn.dataset.studentId,studentName=btn.dataset.studentName;confirmDialog('Delete "'+studentName+'"? This cannot be undone.',async()=>{showLoading(true);const result=await Store.deleteStudent(school,grade,studentId);showLoading(false);if(result.ok){toast('Student deleted ✓');await renderStudentListView();}else{toast(result.err||'Delete failed','error');}});};});
+
+item.innerHTML = `
+  <div class="list-icon">${escapeHtml(initials)}</div>
+  <div class="list-details">
+    <h4>${escapeHtml(student.name)}</h4>
+    <p>${(student.subjects?.length||0)} subjects</p>
+  </div>
+  <button class="btn-edit-student-quick" data-student-id="${escapeHtml(student.id)}" data-student-name="${escapeHtml(student.name)}" aria-label="Edit ${escapeHtml(student.name)}">✏️</button>
+  <button class="btn-delete-student-quick" data-student-id="${escapeHtml(student.id)}" data-student-name="${escapeHtml(student.name)}" aria-label="Delete ${escapeHtml(student.name)}">🗑️</button>
+`;
+list.appendChild(item);}
+
+// ✅ Use event delegation for hover effects and button clicks
+list.onmouseenter = (e) => {
+  if(window.innerWidth > 480) {
+    const item = e.target.closest('.list-item');
+    if(item) {
+      item.querySelector('.btn-edit-student-quick')?.style.setProperty('opacity', '1', 'important');
+      item.querySelector('.btn-delete-student-quick')?.style.setProperty('opacity', '1', 'important');
+    }
+  }
+}, true;
+
+list.onmouseleave = (e) => {
+  if(window.innerWidth > 480) {
+    const item = e.target.closest('.list-item');
+    if(item) {
+      item.querySelector('.btn-edit-student-quick')?.style.setProperty('opacity', '0', 'important');
+      item.querySelector('.btn-delete-student-quick')?.style.setProperty('opacity', '0', 'important');
+    }
+  }
+}, true;
+
+list.onclick = (e) => {
+  const item = e.target.closest('.list-item');
+  if(item && !e.target.closest('.btn-delete-student-quick') && !e.target.closest('.btn-edit-student-quick')){
+    const studentId = item.dataset.studentId;
+    (async () => {
+      const students = await Store.getStudents(State.studentList.school, State.studentList.grade);
+      const student = students.find(s => s.id === studentId);
+      if(student){State.studentList.selectedStudent=student;renderStudentDetail(student);show('student-detail');}
+    })();
+  }
+  
+  // Edit button handler
+  if(e.target.closest('.btn-edit-student-quick')){
+    e.stopPropagation();
+    const btn = e.target.closest('.btn-edit-student-quick');
+    const studentId = btn.dataset.studentId;
+    const studentName = btn.dataset.studentName;
+    editStudent(school, grade, studentId, studentName);
+  }
+  
+  // Delete button handler
+  if(e.target.closest('.btn-delete-student-quick')){
+    e.stopPropagation();
+    const btn = e.target.closest('.btn-delete-student-quick');
+    const studentId = btn.dataset.studentId;
+    const studentName = btn.dataset.studentName;
+    confirmDialog('Delete "'+escapeHtml(studentName)+'"? This cannot be undone.', async () => {
+      showLoading(true);
+      const result = await Store.deleteStudent(school, grade, studentId);
+      showLoading(false);
+      if(result.ok){
+        toast('Student deleted ✓');
+        await renderStudentListView();
+      } else {
+        toast(result.err || 'Delete failed', 'error');
+      }
+    });
+  }
+};
+
 }catch(e){toast('Failed to load students','error');}finally{showLoading(false);}}
 
-function renderStudentDetail(student){const initials=student.name.split(' ').map(n=>n.trim()[0]).filter(c=>c).slice(0,2).join('').toUpperCase()||'?';
-document.getElementById('detailAvatar').textContent=initials;document.getElementById('detailName').textContent=student.name;document.getElementById('detailMeta').textContent=State.studentList.school+' • '+State.studentList.grade;
-const subjectsContainer=document.getElementById('detailSubjects');if(student.subjects&&student.subjects.length>0){subjectsContainer.innerHTML=student.subjects.map(subj=>'<span class="subject-tag">'+subj+'</span>').join('');}else{subjectsContainer.innerHTML='<span class="text-muted">No subjects enrolled</span>';}}
+function renderStudentDetail(student){
+  const initials=student.name.split(' ').map(n=>n.trim()[0]).filter(c=>c).slice(0,2).join('').toUpperCase()||'?';
+  
+  const detailAvatar = document.getElementById('detailAvatar');
+  const detailName = document.getElementById('detailName');
+  const detailMeta = document.getElementById('detailMeta');
+  const detailSubjects = document.getElementById('detailSubjects');
+  
+  if(detailAvatar) detailAvatar.textContent=initials;
+  if(detailName) detailName.textContent=escapeHtml(student.name);
+  if(detailMeta) detailMeta.textContent=escapeHtml(State.studentList.school)+' • '+escapeHtml(State.studentList.grade);
+  
+  if(detailSubjects){
+    if(student.subjects&&student.subjects.length>0){
+      detailSubjects.innerHTML=student.subjects.map(subj=>'<span class="subject-tag">'+escapeHtml(subj)+'</span>').join('');
+    }else{
+      detailSubjects.innerHTML='<span class="text-muted">No subjects enrolled</span>';
+    }
+  }
+}
 
 function renderReportTable(reportData,school,grade,subject){
   if(!reportData||reportData.length===0){
-    document.getElementById('reportResults').classList.add('hidden');
-    document.getElementById('noReportData').classList.remove('hidden');
+    document.getElementById('reportResults')?.classList.add('hidden');
+    document.getElementById('noReportData')?.classList.remove('hidden');
     return;
   }
-  document.getElementById('noReportData').classList.add('hidden');
-  document.getElementById('reportResults').classList.remove('hidden');
+  document.getElementById('noReportData')?.classList.add('hidden');
+  document.getElementById('reportResults')?.classList.remove('hidden');
   
-  const schoolLabel = school === '__ALL__' ? 'All Schools' : school;
-  const gradeLabel = grade === '__ALL__' ? 'All Grades' : grade;
+  const schoolLabel = school === '__ALL__' ? 'All Schools' : escapeHtml(school);
+  const gradeLabel = grade === '__ALL__' ? 'All Grades' : escapeHtml(grade);
   const subjectLabel = subject || 'All Subjects';
-  document.getElementById('reportSubtitle').textContent=`${schoolLabel} • ${gradeLabel} • ${subjectLabel} • ${reportData.length} record(s)`;
+  
+  const reportSubtitle = document.getElementById('reportSubtitle');
+  if(reportSubtitle) reportSubtitle.textContent=`${schoolLabel} • ${gradeLabel} • ${subjectLabel} • ${reportData.length} record(s)`;
   
   const zipBtn = document.getElementById('btnDownloadZIP');
-  zipBtn.disabled = !window.JSZip;
+  if(zipBtn) zipBtn.disabled = !window.JSZip;
   
   State.reports={school:school,grade:grade,subject:subject,data:reportData};
 }
 
 async function generateReportPDF(reportData,school,grade,subject){
-  if(!window.jspdf||!window.jspdf.jsPDF)throw new Error('PDF library not loaded.');
+  // ✅ Validate jsPDF availability and constructor
+  if (!window.jspdf?.jsPDF || typeof window.jspdf.jsPDF !== 'function') {
+    throw new Error('PDF library not loaded or invalid');
+  }
+  
   const{jsPDF}=window.jspdf,doc=new jsPDF();
   doc.setFillColor(99,102,241);
   doc.rect(0,0,210,35,'F');
@@ -1035,8 +1493,8 @@ async function generateReportPDF(reportData,school,grade,subject){
   doc.text('Attendance Report',105,26,null,null,'center');
   doc.setTextColor(30,41,59);
   doc.setFontSize(10);
-  const schoolLabel = school === '__ALL__' ? 'All Schools' : school;
-  const gradeLabel = grade === '__ALL__' ? 'All Grades' : grade;
+  const schoolLabel = school === '__ALL__' ? 'All Schools' : escapeHtml(school);
+  const gradeLabel = grade === '__ALL__' ? 'All Grades' : escapeHtml(grade);
   const subjectLabel = subject || 'All Subjects';
   doc.text('School: '+schoolLabel,20,50);
   doc.text('Grade: '+gradeLabel,20,58);
@@ -1057,8 +1515,8 @@ async function generateReportPDF(reportData,school,grade,subject){
     if(i%2===0){doc.setFillColor(248,250,252);doc.rect(20,y-6,170,8,'F');}
     doc.setFont('helvetica','normal');
     doc.setFontSize(8.5);
-    doc.text(row.studentName.substring(0,22),22,y);
-    doc.text(row.subject,75,y);
+    doc.text(escapeHtml(row.studentName).substring(0,22),22,y);
+    doc.text(escapeHtml(row.subject),75,y);
     doc.text(row.present+'/'+row.total,130,y);
     doc.text(row.percent+'%',175,y);
     doc.setFillColor(221,235,255);
@@ -1075,7 +1533,12 @@ async function generateReportPDF(reportData,school,grade,subject){
 
 async function downloadReportZIP(){
   if(!State.reports.data||State.reports.data.length===0){toast('No data to download','warning');return;}
-  if(!window.JSZip||!window.jspdf){toast('Export libraries loading...','warning');return;}
+  
+  // ✅ Validate all required libraries
+  if(!window.JSZip){toast('ZIP library not loaded','error');return;}
+  if(!window.jspdf?.jsPDF || typeof window.jspdf.jsPDF !== 'function'){toast('PDF library not loaded','error');return;}
+  if(typeof window.saveAs !== 'function'){toast('FileSaver library not loaded','error');return;}
+  
   showLoading(true);toast('Preparing download...','success');
   try{
     const zip=new JSZip();
@@ -1115,9 +1578,9 @@ async function downloadReportZIP(){
           doc.setTextColor(30,41,59);
           doc.setFontSize(10);
           doc.setFont('helvetica','normal');
-          doc.text('Student: '+studentName,20,45);
-          doc.text('School: '+schoolName,20,53);
-          doc.text('Grade: '+gradeName,20,61);
+          doc.text('Student: '+escapeHtml(studentName),20,45);
+          doc.text('School: '+escapeHtml(schoolName),20,53);
+          doc.text('Grade: '+escapeHtml(gradeName),20,61);
           doc.text('Generated: '+new Date().toLocaleDateString(),20,69);
           
           doc.setFontSize(9);
@@ -1134,7 +1597,7 @@ async function downloadReportZIP(){
             if(y>255){doc.addPage();y=30;}
             doc.setFont('helvetica','normal');
             doc.setFontSize(9);
-            doc.text(row.subject,25,y);
+            doc.text(escapeHtml(row.subject),25,y);
             doc.text(row.present+' / '+row.total,100,y);
             doc.text(row.percent+'%',155,y);
             doc.setFillColor(221,235,255);
@@ -1162,89 +1625,359 @@ async function downloadReportZIP(){
 }
 
 function showPasswordDialog(onConfirm){
-  document.getElementById('passwordDialog').classList.remove('hidden');
-  document.getElementById('deletePassword').value = '';
-  document.getElementById('deletePassword').focus();
+  const dialog = document.getElementById('passwordDialog');
+  const pwdInput = document.getElementById('deletePassword');
+  if(!dialog || !pwdInput) return;
+  
+  dialog.classList.remove('hidden');
+  pwdInput.value = '';
+  pwdInput.focus();
   const handleConfirm = () => {
-    const pwd = document.getElementById('deletePassword').value;
-    document.getElementById('passwordDialog').classList.add('hidden');
+    const pwd = pwdInput.value;
+    dialog.classList.add('hidden');
     onConfirm(pwd);
   };
   const handleCancel = () => {
-    document.getElementById('passwordDialog').classList.add('hidden');
+    dialog.classList.add('hidden');
   };
-  document.getElementById('passwordConfirm').onclick = handleConfirm;
-  document.getElementById('passwordCancel').onclick = handleCancel;
-  document.getElementById('deletePassword').onkeydown = (e) => {
+  document.getElementById('passwordConfirm')?.removeEventListener('click', handleConfirm);
+  document.getElementById('passwordCancel')?.removeEventListener('click', handleCancel);
+  document.getElementById('passwordConfirm')?.addEventListener('click', handleConfirm);
+  document.getElementById('passwordCancel')?.addEventListener('click', handleCancel);
+  pwdInput.onkeydown = (e) => {
     if(e.key === 'Enter') handleConfirm();
   };
 }
 
+// ===== Edit Student Function =====
+async function editStudent(school, grade, studentId, studentName) {
+  showLoading(true);
+  try {
+    const students = await Store.getStudents(school, grade);
+    const student = students.find(s => s.id === studentId);
+    
+    if(!student) {
+      toast('Student not found', 'error');
+      return;
+    }
+    
+    // Populate the add-student form with existing data
+    const schoolSelect = document.getElementById('selectStudentSchool');
+    if(schoolSelect) schoolSelect.value = school;
+    
+    const grades = await Store.getGrades(school);
+    const gradeSelect = document.getElementById('selectStudentGrade');
+    if(gradeSelect){
+      gradeSelect.innerHTML = '<option value="">Select...</option>' + 
+        grades.map(g => `<option value="${escapeHtml(g.name)}">${escapeHtml(g.name)}</option>`).join('');
+      gradeSelect.value = grade;
+      gradeSelect.disabled = false;
+    }
+    
+    const inputStudent = document.getElementById('inputStudent');
+    if(inputStudent) inputStudent.value = student.name;
+    
+    renderSubjectsCheckboxes();
+    if(student.subjects && Array.isArray(student.subjects)) {
+      student.subjects.forEach(subj => {
+        const checkbox = document.querySelector(`#subjectsContainer input[value="${subj}"]`);
+        if(checkbox) checkbox.checked = true;
+      });
+    }
+    
+    State.editMode = {
+      active: true,
+      school,
+      grade,
+      studentId,
+      originalName: student.name
+    };
+    
+    const saveBtn = document.getElementById('saveStudentBtn');
+    if(saveBtn) saveBtn.textContent = 'Update Student';
+    show('add-student');
+    
+  } catch(e) {
+    console.error('Edit student error:', e);
+    toast('Failed to load student data', 'error');
+  } finally {
+    showLoading(false);
+  }
+}
+
+// ===== Excel Upload Handlers =====
+function setupExcelUpload() {
+  const uploadBtn = document.getElementById('btnUploadExcel');
+  const fileInput = document.getElementById('excelFileInput');
+  const clearBtn = document.getElementById('btnClearExcel');
+  const uploadSection = document.getElementById('excelUploadSection');
+  const statusEl = document.getElementById('excelStatus');
+  const badgeEl = document.getElementById('excelQueueBadge');
+  const indicator = document.getElementById('autoEnrollIndicator');
+  
+  if(!uploadBtn || !fileInput || !clearBtn || !uploadSection || !statusEl || !badgeEl || !indicator) return;
+  
+  uploadBtn.onclick = () => fileInput.click();
+  
+  fileInput.onchange = async (e) => {
+    const file = e.target.files?.[0];
+    if(!file) return;
+    
+    const school = document.getElementById('selectStudentSchool')?.value;
+    const grade = document.getElementById('selectStudentGrade')?.value;
+    
+    if(!school || !grade) {
+      toast('Select school and grade first', 'warning');
+      fileInput.value = '';
+      return;
+    }
+    
+    try {
+      showLoading(true);
+      const count = await ExcelQueue.load(file, school, grade);
+      
+      uploadSection.classList.add('active');
+      clearBtn.classList.remove('hidden');
+      statusEl.textContent = `Loaded ${count} student${count>1?'s':''} from Excel`;
+      badgeEl.textContent = `${count} pending`;
+      badgeEl.classList.remove('hidden');
+      State.autoEnrollMode = true;
+      indicator.classList.remove('hidden');
+      
+      // Load first student
+      loadNextFromQueue();
+      
+      toast(`Excel loaded: ${count} students queued`, 'success');
+    } catch(err) {
+      toast(err.message || 'Failed to parse Excel', 'error');
+      fileInput.value = '';
+    } finally {
+      showLoading(false);
+    }
+  };
+  
+  clearBtn.onclick = () => {
+    ExcelQueue.clear();
+    State.autoEnrollMode = false;
+    uploadSection.classList.remove('active');
+    clearBtn.classList.add('hidden');
+    statusEl.textContent = 'Upload Excel with Name & Subject columns';
+    badgeEl.classList.add('hidden');
+    indicator.classList.add('hidden');
+    fileInput.value = '';
+    toast('Excel upload cleared', 'success');
+  };
+}
+
+function loadNextFromQueue() {
+  if(!ExcelQueue.hasNext()) {
+    toast('All students from Excel enrolled! ✓', 'success');
+    document.getElementById('btnClearExcel')?.click();
+    return;
+  }
+  
+  const next = ExcelQueue.next();
+  const inputStudent = document.getElementById('inputStudent');
+  if(inputStudent) inputStudent.value = next.name;
+  
+  // Clear and select subjects
+  clearSubjects();
+  next.subjects.forEach(subj => {
+    const checkbox = document.querySelector(`#subjectsContainer input[value="${subj}"]`);
+    if(checkbox) checkbox.checked = true;
+  });
+  
+  // Update badge
+  const remaining = ExcelQueue.remaining();
+  const badgeEl = document.getElementById('excelQueueBadge');
+  if(badgeEl) badgeEl.textContent = `${remaining} pending`;
+  
+  toast(`Loaded: ${escapeHtml(next.name)} • ${next.subjects.join(', ')}`, 'success');
+}
+
 // Event Handlers
-document.getElementById('btnAdd').onclick=()=>{show('add-menu');};
-document.getElementById('btnStart').onclick=async()=>{await renderSchoolList();show('select-school');};
-document.getElementById('btnReports').onclick=async()=>{
+document.getElementById('btnAdd')?.addEventListener('click', ()=>{show('add-menu');});
+document.getElementById('btnStart')?.addEventListener('click', async()=>{await renderSchoolList();show('select-school');});
+document.getElementById('btnReports')?.addEventListener('click', async()=>{
   await renderSchoolSelects(true);
   State.reports={school:null,grade:null,subject:null,data:[]};
-  document.getElementById('reportGrade').innerHTML='<option value="__ALL__">📚 All Grades</option><option value="">Select school first</option>';
-  document.getElementById('reportGrade').disabled=true;
-  document.getElementById('reportResults').classList.add('hidden');
-  document.getElementById('noReportData').classList.add('hidden');
+  const reportGrade = document.getElementById('reportGrade');
+  if(reportGrade){
+    reportGrade.innerHTML='<option value="__ALL__">📚 All Grades</option><option value="">Select school first</option>';
+    reportGrade.disabled=true;
+  }
+  document.getElementById('reportResults')?.classList.add('hidden');
+  document.getElementById('noReportData')?.classList.add('hidden');
   show('reports');
-};
+});
 
-document.getElementById('btnDeleteData').onclick = () => {
+document.getElementById('btnDeleteData')?.addEventListener('click', () => {
   showPasswordDialog(async (password) => {
     const result = await Store.deleteAllAttendanceData(password);
     if(result.ok){toast('Deleted '+result.count+' records','success');}
     else{toast(result.err||'Delete failed','error');}
   });
-};
+});
 
-document.getElementById('btnAddSchool').onclick=()=>show('add-school');
-document.getElementById('btnAddGrade').onclick=async()=>{await renderSchoolSelects();show('add-grade');};
-document.getElementById('btnAddStudent').onclick=async()=>{await renderSchoolSelects();renderSubjectsCheckboxes();show('add-student');};
-document.getElementById('btnStudentList').onclick=async()=>{await renderSchoolSelects();State.studentList={school:null,grade:null,selectedStudent:null};document.getElementById('filterGrade').innerHTML='<option value="">Select school first</option>';document.getElementById('filterGrade').disabled=true;show('student-list');};
-document.getElementById('cancelSchool').onclick=(e)=>{e.preventDefault();document.getElementById('formSchool').reset();show('dashboard');};
-document.getElementById('cancelGrade').onclick=(e)=>{e.preventDefault();document.getElementById('formGrade').reset();show('dashboard');};
-document.getElementById('cancelStudent').onclick=(e)=>{e.preventDefault();document.getElementById('formStudent').reset();const sel=document.getElementById('selectStudentGrade');sel.innerHTML='<option value="">Select school first</option>';sel.disabled=true;show('dashboard');};
-document.getElementById('formSchool').onsubmit=async(e)=>{e.preventDefault();const btn=document.getElementById('saveSchoolBtn');btn.classList.add('btn-loading');btn.disabled=true;const r=await Store.addSchool(document.getElementById('inputSchool').value);if(r.ok){toast('School saved');document.getElementById('formSchool').reset();await renderSchoolSelects();}else toast(r.err,'error');btn.classList.remove('btn-loading');btn.disabled=false;};
-document.getElementById('formGrade').onsubmit=async(e)=>{e.preventDefault();const school=document.getElementById('selectGradeSchool').value,grade=document.getElementById('inputGrade').value;if(!school||!grade){toast('Fill all fields','error');return;}const btn=document.getElementById('saveGradeBtn');btn.classList.add('btn-loading');btn.disabled=true;const r=await Store.addGrade(school,grade);if(r.ok){toast('Grade saved');document.getElementById('formGrade').reset();}else toast(r.err,'error');btn.classList.remove('btn-loading');btn.disabled=false;};
-document.getElementById('selectStudentSchool').onchange=async function(){const sel=document.getElementById('selectStudentGrade'),school=this.value;if(!school){sel.innerHTML='<option value="">Select school first</option>';sel.disabled=true;return;}sel.disabled=true;sel.innerHTML='<option value="">Loading...</option>';try{const grades=await Store.getGrades(school);if(!grades.length){sel.innerHTML='<option value="">No grades</option>';sel.disabled=true;return;}sel.innerHTML='<option value="">Select...</option>'+grades.map(g=>'<option value="'+g.name+'">'+g.name+'</option>').join('');sel.disabled=false;}catch(e){sel.innerHTML='<option value="">Error loading</option>';toast('Failed to load grades','error');}};
-document.getElementById('formStudent').onsubmit=async(e)=>{e.preventDefault();const school=document.getElementById('selectStudentSchool').value,grade=document.getElementById('selectStudentGrade').value,name=document.getElementById('inputStudent').value,subjects=getSelectedSubjects();if(!school||!grade||!name){toast('Fill all fields','error');return;}if(subjects.length===0){toast('Select at least one subject','warning');return;}const btn=document.getElementById('saveStudentBtn');btn.classList.add('btn-loading');btn.disabled=true;const r=await Store.addStudent(school,grade,name,subjects);if(r.ok){toast('Student enrolled');document.getElementById('inputStudent').value='';document.querySelectorAll('#subjectsContainer input[type="checkbox"]').forEach(cb=>cb.checked=false);}else toast(r.err,'error');btn.classList.remove('btn-loading');btn.disabled=false;};
-document.getElementById('filterSchool').onchange=async function(){const school=this.value;State.studentList.school=school;const gradeSel=document.getElementById('filterGrade');if(!school){gradeSel.innerHTML='<option value="">Select school first</option>';gradeSel.disabled=true;State.studentList.grade=null;renderStudentListView();return;}gradeSel.disabled=true;gradeSel.innerHTML='<option value="">Loading...</option>';try{const grades=await Store.getGrades(school);if(!grades.length){gradeSel.innerHTML='<option value="">No grades</option>';gradeSel.disabled=true;State.studentList.grade=null;renderStudentListView();return;}gradeSel.innerHTML='<option value="">Select a grade...</option>'+grades.map(g=>'<option value="'+g.name+'">'+g.name+'</option>').join('');gradeSel.disabled=false;State.studentList.grade=null;renderStudentListView();}catch(e){gradeSel.innerHTML='<option value="">Error loading</option>';toast('Failed to load grades','error');}};
-document.getElementById('filterGrade').onchange=async function(){const grade=this.value;State.studentList.grade=grade;await renderStudentListView();};
-document.getElementById('studentListView').onclick=async(e)=>{const item=e.target.closest('.list-item[data-student-id]');if(item&&!e.target.closest('.btn-delete-student-quick')){const studentId=item.dataset.studentId,students=await Store.getStudents(State.studentList.school,State.studentList.grade),student=students.find(s=>s.id===studentId);if(student){State.studentList.selectedStudent=student;renderStudentDetail(student);show('student-detail');}}};
-document.getElementById('backToStudentList').onclick=()=>{State.studentList.selectedStudent=null;show('student-list');};
-document.getElementById('deleteStudentBtn').onclick=()=>{const student=State.studentList.selectedStudent;if(!student)return;confirmDialog('Delete "'+student.name+'"?',async()=>{showLoading(true);const result=await Store.deleteStudent(State.studentList.school,State.studentList.grade,student.id);showLoading(false);if(result.ok){toast('Student deleted');State.studentList.selectedStudent=null;await renderStudentListView();show('student-list');}else{toast(result.err||'Delete failed','error');}});};
+document.getElementById('btnAddSchool')?.addEventListener('click', ()=>show('add-school'));
+document.getElementById('btnAddGrade')?.addEventListener('click', async()=>{await renderSchoolSelects();show('add-grade');});
+document.getElementById('btnAddStudent')?.addEventListener('click', async()=>{
+  await renderSchoolSelects();
+  renderSubjectsCheckboxes();
+  
+  // Attach quick selection listeners
+  document.getElementById('btnSelectPCMB')?.addEventListener('click', selectPCMBSubjects);
+  document.getElementById('btnSelectAll')?.addEventListener('click', selectAllSubjects);
+  document.getElementById('btnClearSubjects')?.addEventListener('click', clearSubjects);
+  
+  // Setup Excel upload
+  setupExcelUpload();
+  
+  // Reset edit mode and auto-enroll
+  State.editMode = null;
+  State.autoEnrollMode = false;
+  const saveBtn = document.getElementById('saveStudentBtn');
+  if(saveBtn) saveBtn.textContent = 'Enroll Student';
+  document.getElementById('autoEnrollIndicator')?.classList.add('hidden');
+  
+  show('add-student');
+});
+document.getElementById('btnStudentList')?.addEventListener('click', async()=>{await renderSchoolSelects();State.studentList={school:null,grade:null,selectedStudent:null};const filterGrade=document.getElementById('filterGrade');if(filterGrade){filterGrade.innerHTML='<option value="">Select school first</option>';filterGrade.disabled=true;}show('student-list');});
+document.getElementById('cancelSchool')?.addEventListener('click', (e)=>{e.preventDefault();document.getElementById('formSchool')?.reset();show('dashboard');});
+document.getElementById('cancelGrade')?.addEventListener('click', (e)=>{e.preventDefault();document.getElementById('formGrade')?.reset();show('dashboard');});
+document.getElementById('cancelStudent')?.addEventListener('click', (e)=>{
+  e.preventDefault();
+  State.editMode = null;
+  State.autoEnrollMode = false;
+  const saveBtn = document.getElementById('saveStudentBtn');
+  if(saveBtn) saveBtn.textContent = 'Enroll Student';
+  document.getElementById('autoEnrollIndicator')?.classList.add('hidden');
+  document.getElementById('formStudent')?.reset();
+  const sel = document.getElementById('selectStudentGrade');
+  if(sel){
+    sel.innerHTML = '<option value="">Select school first</option>';
+    sel.disabled = true;
+  }
+  show('dashboard');
+});
+document.getElementById('formSchool')?.addEventListener('submit', async(e)=>{e.preventDefault();const btn=document.getElementById('saveSchoolBtn');if(btn){btn.classList.add('btn-loading');btn.disabled=true;}const r=await Store.addSchool(document.getElementById('inputSchool')?.value||'');if(r.ok){toast('School saved');document.getElementById('formSchool')?.reset();await renderSchoolSelects();}else toast(r.err||'Error','error');if(btn){btn.classList.remove('btn-loading');btn.disabled=false;}});
+document.getElementById('formGrade')?.addEventListener('submit', async(e)=>{e.preventDefault();const school=document.getElementById('selectGradeSchool')?.value,grade=document.getElementById('inputGrade')?.value;if(!school||!grade){toast('Fill all fields','error');return;}const btn=document.getElementById('saveGradeBtn');if(btn){btn.classList.add('btn-loading');btn.disabled=true;}const r=await Store.addGrade(school,grade);if(r.ok){toast('Grade saved');document.getElementById('formGrade')?.reset();}else toast(r.err||'Error','error');if(btn){btn.classList.remove('btn-loading');btn.disabled=false;}});
+document.getElementById('selectStudentSchool')?.addEventListener('change', async function(){
+  // Reset edit mode if school changes
+  if(State.editMode?.active) {
+    State.editMode = null;
+    const saveBtn = document.getElementById('saveStudentBtn');
+    if(saveBtn) saveBtn.textContent = 'Enroll Student';
+  }
+  const sel=document.getElementById('selectStudentGrade'),school=this.value;if(!school){if(sel){sel.innerHTML='<option value="">Select school first</option>';sel.disabled=true;}return;}if(sel){sel.disabled=true;sel.innerHTML='<option value="">Loading...</option>';}try{const grades=await Store.getGrades(school);if(!grades.length){if(sel){sel.innerHTML='<option value="">No grades</option>';sel.disabled=true;}return;}if(sel){sel.innerHTML='<option value="">Select...</option>'+grades.map(g=>'<option value="'+escapeHtml(g.name)+'">'+escapeHtml(g.name)+'</option>').join('');sel.disabled=false;}}catch(e){if(sel){sel.innerHTML='<option value="">Error loading</option>';}toast('Failed to load grades','error');}});
+document.getElementById('formStudent')?.addEventListener('submit', async(e)=>{
+  e.preventDefault();
+  const school = document.getElementById('selectStudentSchool')?.value;
+  const grade = document.getElementById('selectStudentGrade')?.value;
+  const name = document.getElementById('inputStudent')?.value;
+  const subjects = getSelectedSubjects();
+  
+  if(!school || !grade || !name) {
+    toast('Fill all fields', 'error');
+    return;
+  }
+  if(subjects.length === 0) {
+    toast('Select at least one subject', 'warning');
+    return;
+  }
+  
+  const btn = document.getElementById('saveStudentBtn');
+  if(btn){btn.classList.add('btn-loading');btn.disabled=true;}
+  
+  let result;
+  
+  // Check if we're in edit mode
+  if(State.editMode?.active) {
+    // Update existing student
+    const { studentId, originalName } = State.editMode;
+    result = await Store.updateStudent(school, grade, studentId, name, subjects);
+    
+    if(result.ok) {
+      toast('Student updated ✓');
+      State.editMode = null;
+      const saveBtn = document.getElementById('saveStudentBtn');
+      if(saveBtn) saveBtn.textContent = 'Enroll Student';
+      document.getElementById('formStudent')?.reset();
+      const sel = document.getElementById('selectStudentGrade');
+      if(sel){
+        sel.innerHTML = '<option value="">Select school first</option>';
+        sel.disabled = true;
+      }
+      
+      if(State.screen === 'student-detail' || State.studentList?.school) {
+        await renderStudentListView();
+      }
+      show('dashboard');
+    } else {
+      toast(result.err || 'Update failed', 'error');
+    }
+    
+  } else {
+    // Create new student OR auto-enroll from queue
+    result = await Store.addStudent(school, grade, name, subjects);
+    
+    if(result.ok) {
+      toast('Student enrolled ✓');
+      
+      // If in auto-enroll mode, load next from queue
+      if(State.autoEnrollMode && ExcelQueue.hasNext()) {
+        setTimeout(() => {
+          loadNextFromQueue();
+        }, 300);
+      } else {
+        // Normal mode: clear form
+        const inputStudent = document.getElementById('inputStudent');
+        if(inputStudent) inputStudent.value = '';
+        clearSubjects();
+      }
+    } else {
+      toast(result.err || 'Enrollment failed', 'error');
+    }
+  }
+  
+  if(btn){btn.classList.remove('btn-loading');btn.disabled=false;}
+});
+document.getElementById('filterSchool')?.addEventListener('change', async function(){const school=this.value;State.studentList.school=school;const gradeSel=document.getElementById('filterGrade');if(!school){if(gradeSel){gradeSel.innerHTML='<option value="">Select school first</option>';gradeSel.disabled=true;}State.studentList.grade=null;renderStudentListView();return;}if(gradeSel){gradeSel.disabled=true;gradeSel.innerHTML='<option value="">Loading...</option>';}try{const grades=await Store.getGrades(school);if(!grades.length){if(gradeSel){gradeSel.innerHTML='<option value="">No grades</option>';gradeSel.disabled=true;}State.studentList.grade=null;renderStudentListView();return;}if(gradeSel){gradeSel.innerHTML='<option value="">Select a grade...</option>'+grades.map(g=>'<option value="'+escapeHtml(g.name)+'">'+escapeHtml(g.name)+'</option>').join('');gradeSel.disabled=false;}State.studentList.grade=null;renderStudentListView();}catch(e){if(gradeSel){gradeSel.innerHTML='<option value="">Error loading</option>';}toast('Failed to load grades','error');}});
+document.getElementById('filterGrade')?.addEventListener('change', async function(){const grade=this.value;State.studentList.grade=grade;await renderStudentListView();});
 
-document.getElementById('reportSchool').onchange=async function(){
+document.getElementById('reportSchool')?.addEventListener('change', async function(){
   const school=this.value;
   State.reports.school=school;
   const gradeSel=document.getElementById('reportGrade');
   if(!school || school === '__ALL__'){
-    gradeSel.innerHTML = '<option value="__ALL__">📚 All Grades (All Schools)</option>';
-    gradeSel.value = '__ALL__';
-    gradeSel.disabled = false;
+    if(gradeSel){
+      gradeSel.innerHTML = '<option value="__ALL__">📚 All Grades (All Schools)</option>';
+      gradeSel.value = '__ALL__';
+      gradeSel.disabled = false;
+    }
     State.reports.grade = '__ALL__';
     toast('All grades from all schools included','success');
     return;
   }
-  gradeSel.disabled=true;
-  gradeSel.innerHTML='<option value="">Loading...</option>';
+  if(gradeSel){
+    gradeSel.disabled=true;
+    gradeSel.innerHTML='<option value="">Loading...</option>';
+  }
   try{
     const grades=await Store.getGrades(school);
-    if(!grades.length){gradeSel.innerHTML='<option value="">No grades</option>';gradeSel.disabled=true;return;}
-    gradeSel.innerHTML='<option value="__ALL__">📚 All Grades</option><option value="">Select a grade...</option>'+grades.map(g=>'<option value="'+g.name+'">'+g.name+'</option>').join('');
-    gradeSel.disabled=false;
+    if(!grades.length){if(gradeSel){gradeSel.innerHTML='<option value="">No grades</option>';gradeSel.disabled=true;}return;}
+    if(gradeSel){
+      gradeSel.innerHTML='<option value="__ALL__">📚 All Grades</option><option value="">Select a grade...</option>'+grades.map(g=>'<option value="'+escapeHtml(g.name)+'">'+escapeHtml(g.name)+'</option>').join('');
+      gradeSel.disabled=false;
+    }
     State.reports.grade = null;
-  }catch(e){gradeSel.innerHTML='<option value="">Error loading</option>';toast('Failed to load grades','error');}
-};
+  }catch(e){if(gradeSel){gradeSel.innerHTML='<option value="">Error loading</option>';}toast('Failed to load grades','error');}
+});
 
-document.getElementById('btnGenerateReport').onclick=async()=>{
-  const school=document.getElementById('reportSchool').value,
-        grade=document.getElementById('reportGrade').value,
-        subject=document.getElementById('reportSubject').value||null;
+document.getElementById('btnGenerateReport')?.addEventListener('click', async()=>{
+  const school=document.getElementById('reportSchool')?.value,
+        grade=document.getElementById('reportGrade')?.value,
+        subject=document.getElementById('reportSubject')?.value||null;
   if(!school || school === ''){toast('Select a school','warning');return;}
   if(school !== '__ALL__' && (!grade || grade === '')){toast('Select a grade','warning');return;}
   showLoading(true);
@@ -1255,17 +1988,17 @@ document.getElementById('btnGenerateReport').onclick=async()=>{
     renderReportTable(result.report,school,grade,subject);
     toast('Found '+result.report.length+' records','success');
   }else{
-    document.getElementById('reportResults').classList.add('hidden');
-    document.getElementById('noReportData').classList.remove('hidden');
+    document.getElementById('reportResults')?.classList.add('hidden');
+    document.getElementById('noReportData')?.classList.remove('hidden');
     toast(result.err||'No attendance data found','warning');
-}
-};
+  }
+});
 
-document.getElementById('btnDownloadZIP').onclick=downloadReportZIP;
-document.getElementById('schoolList').onclick=async(e)=>{const item=e.target.closest('.list-item[data-school]');if(item){if(e.target.closest('.btn-delete-school'))return;State.session.school=item.dataset.school;await renderGradeList(item.dataset.school);show('select-grade');}};
-document.getElementById('gradeList').onclick=async(e)=>{const item=e.target.closest('.list-item[data-grade]');if(item){State.session.grade=item.dataset.grade;document.getElementById('selectedSchoolSub').textContent=State.session.school;document.getElementById('selectedGradeSub').textContent='Grade: '+State.session.grade;renderSubjectDropdown();show('select-subject');}};
-document.getElementById('backToGrade').onclick=()=>{State.session.grade=null;show('select-grade');};
-document.getElementById('startAttendanceWithSubject').onclick=async()=>{const subject=document.getElementById('selectAttendanceSubject').value;if(!subject){toast('Please select a subject','warning');return;}State.session.subject=subject;await startAttendanceWithSubject();};
+document.getElementById('btnDownloadZIP')?.addEventListener('click', downloadReportZIP);
+document.getElementById('schoolList')?.addEventListener('click', async(e)=>{const item=e.target.closest('.list-item[data-school]');if(item){if(e.target.closest('.btn-delete-school'))return;State.session.school=item.dataset.school;await renderGradeList(item.dataset.school);show('select-grade');}});
+document.getElementById('gradeList')?.addEventListener('click', async(e)=>{const item=e.target.closest('.list-item[data-grade]');if(item){State.session.grade=item.dataset.grade;const selectedSchoolSub=document.getElementById('selectedSchoolSub');const selectedGradeSub=document.getElementById('selectedGradeSub');if(selectedSchoolSub)selectedSchoolSub.textContent=State.session.school;if(selectedGradeSub)selectedGradeSub.textContent='Grade: '+State.session.grade;renderSubjectDropdown();show('select-subject');}});
+document.getElementById('backToGrade')?.addEventListener('click', ()=>{State.session.grade=null;show('select-grade');});
+document.getElementById('startAttendanceWithSubject')?.addEventListener('click', async()=>{const subject=document.getElementById('selectAttendanceSubject')?.value;if(!subject){toast('Please select a subject','warning');return;}State.session.subject=subject;await startAttendanceWithSubject();});
 
 async function startAttendanceWithSubject(){
   const{school,grade,subject}=State.session;
@@ -1274,8 +2007,8 @@ async function startAttendanceWithSubject(){
     const allStudents=await Store.getStudents(school,grade),
           filteredStudents=allStudents.filter(s=>s.subjects&&Array.isArray(s.subjects)&&s.subjects.includes(subject));
     State.session={school:school,grade:grade,subject:subject,students:filteredStudents,idx:0,results:[]};
-    if(!filteredStudents.length){toast('No students found for '+subject,'warning');makeReport();show('complete');return;}
-    toast('Found '+filteredStudents.length+' student(s) for '+subject);
+    if(!filteredStudents.length){toast('No students found for '+escapeHtml(subject),'warning');makeReport();show('complete');return;}
+    toast('Found '+filteredStudents.length+' student(s) for '+escapeHtml(subject));
     renderCard();
     show('attendance');
   }catch(e){toast('Failed to load students','error');}finally{showLoading(false);}
@@ -1291,26 +2024,26 @@ async function mark(status){
   setTimeout(()=>{if(State.session.idx>=students.length)complete();else renderCard();},140);
 }
 
-document.getElementById('btnPresent').onclick=()=>mark('present');
-document.getElementById('btnAbsent').onclick=()=>mark('absent');
+document.getElementById('btnPresent')?.addEventListener('click', ()=>mark('present'));
+document.getElementById('btnAbsent')?.addEventListener('click', ()=>mark('absent'));
 function complete(){makeReport();show('complete');}
-document.getElementById('btnNew').onclick=async()=>{await renderSchoolList();show('select-school');};
-document.getElementById('btnHome').onclick=()=>show('dashboard');
-document.getElementById('addSchoolFromEmpty').onclick=()=>show('add-school');
-document.getElementById('addGradeFromEmpty').onclick=async()=>{await renderSchoolSelects();show('add-grade');};
+document.getElementById('btnNew')?.addEventListener('click', async()=>{await renderSchoolList();show('select-school');});
+document.getElementById('btnHome')?.addEventListener('click', ()=>show('dashboard'));
+document.getElementById('addSchoolFromEmpty')?.addEventListener('click', ()=>show('add-school'));
+document.getElementById('addGradeFromEmpty')?.addEventListener('click', async()=>{await renderSchoolSelects();show('add-grade');});
 document.onkeydown=(e)=>{
   if(State.screen==='attendance'){
     if(e.key==='ArrowRight'||e.key==='p'||e.key==='P'||e.key==='Enter'){e.preventDefault();mark('present');}
     if(e.key==='ArrowLeft'||e.key==='a'||e.key==='A'){e.preventDefault();mark('absent');}
   }
-  if(e.key==='Escape'&&State.screen!=='dashboard'){e.preventDefault();document.getElementById('backBtn').click();}
+  if(e.key==='Escape'&&State.screen!=='dashboard'){e.preventDefault();document.getElementById('backBtn')?.click();}
 };
 document.querySelectorAll('[role="button"]').forEach(el=>{el.onkeydown=(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();el.click();}};});
 
 async function waitForLibraries(){
   return new Promise(resolve => {
     const check = setInterval(() => {
-      if(window.JSZip && window.jspdf?.jsPDF){
+      if(window.JSZip && window.jspdf?.jsPDF && typeof window.saveAs === 'function' && window.XLSX){
         clearInterval(check);
         State.libsReady = true;
         const zipBtn = document.getElementById('btnDownloadZIP');
